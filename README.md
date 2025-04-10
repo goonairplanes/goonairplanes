@@ -188,6 +188,25 @@ To use SSG, just add this comment to your HTML:
 <!--render:ssg-->
 ```
 
+### Asset Bundling
+
+Go on Airplanes includes production-ready asset bundling for optimized performance:
+
+- **Automatic CSS/JS combining** – All static assets bundled into single files
+- **Zero configuration needed** – Works out of the box in production mode
+- **Easy template integration** – Simple variables for bundle paths
+
+Enable bundling in your code:
+```go
+app.Marley.BundleMode = true
+```
+
+Use bundled assets in your layout:
+```html
+<link rel="stylesheet" href="{{index .Bundles "css"}}">
+<script src="{{index .Bundles "js"}}"></script>
+```
+
 ### Enhanced Metadata
 
 Both rendering modes support metadata for SEO:
