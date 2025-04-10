@@ -100,7 +100,7 @@ function Setup-GoOnAirplanes {
         
         try {
             Push-Location $tempDir
-            git clone https://github.com/kleeedolinux/goonairplanes.git . --quiet
+            git clone https://github.com/kleeedolinux/goonairplanes.git . 
             
             Get-ChildItem -Force | Where-Object { $_.Name -ne ".git" } | Copy-Item -Destination $projectDir -Recurse -Force
             
@@ -115,7 +115,7 @@ function Setup-GoOnAirplanes {
     }
     else {
         try {
-            git clone https://github.com/kleeedolinux/goonairplanes.git $projectDir --quiet
+            git clone https://github.com/kleeedolinux/goonairplanes.git $projectDir 
             Remove-Item -Path (Join-Path $projectDir ".git") -Recurse -Force
         }
         catch {
@@ -130,9 +130,9 @@ function Setup-GoOnAirplanes {
     Push-Location $projectDir
     
     try {
-        git init --quiet
-        git add . --quiet
-        git commit -m "Initial commit: Go on Airplanes project" --quiet
+        git init 
+        git add . 
+        git commit -m "Initial commit: Go on Airplanes project" 
         
         Write-Styled "Git repository initialized" -Color $Theme.Success -Prefix "Git"
     }
