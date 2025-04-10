@@ -103,7 +103,6 @@ Organize routes in subfolders for better structure:
 app/
 ├── dashboard/
 │   ├── index.html         # "/dashboard"
-│   ├── settings.html      # "/dashboard/settings"
 │   └── analytics/
 │       └── index.html     # "/dashboard/analytics"
 ```
