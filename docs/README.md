@@ -26,6 +26,9 @@ Welcome to the Go on Airplanes framework documentation! This guide focuses on wh
 - [Creating Routes](api-routes.md#creating-routes)
 - [Request Handling](api-routes.md#request-handling)
 - [Response Formatting](api-routes.md#response-formatting)
+- [JSON Utilities](JSON_UTILS.md#core-features)
+- [Pagination Support](JSON_UTILS.md#pagination-support)
+- [API Context Helpers](JSON_UTILS.md#apicontext-methods)
 
 ### Client-Side
 - [jQuery Integration](client-side.md#jquery-integration)
@@ -78,6 +81,9 @@ func ConfigureMiddleware(app *core.GonAirApp) {
    - Use meaningful route names
    - Return consistent response formats
    - Handle errors gracefully
+   - Use JSON utilities for standardized responses
+   - Implement proper pagination for list endpoints
+   - Validate request bodies and parameters
 
 4. **Client-Side**
    - Use jQuery for DOM manipulation
