@@ -228,24 +228,19 @@ All files in the `static` directory are served at `/static/`:
 <script src="/static/js/app.js"></script>
 ```
 
-### Favicon and Logo
-
-The framework includes logo images in the `img` directory:
-- Use `goonairplaneicon.png` as a favicon
-- Use `goonairplane2.png` (transparent) or `goonairplane.png` (solid background) for branding
-
 Example favicon implementation in layout.html:
 ```html
-<link rel="icon" type="image/png" href="/static/img/goonairplaneicon.png">
+<link rel="icon" type="image/png" href="/static/favicon.ico">
 ```
 
 ## 📈 Performance Tips
 
-- Enable template caching in production
-- Use concurrent template loading for faster startup
-- Leverage the built-in Go template syntax for logic
-- Keep components small and focused
-- Use static assets for CSS/JS instead of inline code
+- Enable template caching in production by setting `TemplateCache: true` in your config
+- The framework uses concurrent template loading for faster startup times
+- Keep components small and focused for better reusability and performance
+- Marley template engine caches components for efficient rendering
+- Set appropriate LogLevel in production (`"info"` or `"error"`) to reduce logging overhead
+- Static assets are efficiently served through dedicated file server handlers
 
 ## 📜 License
 
