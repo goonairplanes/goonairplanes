@@ -6,8 +6,9 @@ The following versions of Go on Airplanes are currently being supported with sec
 
 | Version | Supported          |
 | ------- | ------------------ |
+| 0.4.x   | :white_check_mark: |
 | 0.3.x   | :white_check_mark: |
-| 0.2.x   | :white_check_mark: |
+| 0.2.x   | :x: |
 | 0.1.x   | :x:                |
 | < 0.1   | :x:                |
 
