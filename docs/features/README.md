@@ -4,41 +4,19 @@ This section provides detailed documentation for all major features of the Go on
 
 ## 📋 Table of Contents
 
-1. [Routing](routing.md)
-   - File-based routing
-   - Dynamic routes
-   - Route parameters
-   - API routes
 
-2. [Templates](templates.md)
-   - Template syntax
-   - Layout system
-   - Template inheritance
-   - Template functions
-
-3. [Components](components.md)
-   - Component creation
-   - Component usage
-   - Component props
-   - Component composition
-
-4. [Middleware](middleware.md)
+1. [Middleware](middleware.md)
    - Built-in middleware
    - Custom middleware
    - Middleware chaining
    - Security middleware
 
-5. [API Routes](api-routes.md)
-   - API route creation
-   - Request handling
-   - Response formatting
-   - Error handling
+2. [Rendering Modes](rendering.md)
+   - Server-Side Rendering (SSR)
+   - Static Site Generation (SSG)
+   - Page metadata
+   - SEO optimization
 
-6. [Hot Reloading](hot-reloading.md)
-   - Development mode
-   - File watching
-   - Template reloading
-   - Static file serving
 
 ## 🎯 Feature Overview
 
@@ -56,6 +34,9 @@ A flexible middleware system for handling requests and responses.
 
 ### API Routes
 Create RESTful API endpoints with proper request/response handling.
+
+### Rendering Modes
+Support for both Server-Side Rendering (SSR) and Static Site Generation (SSG) to optimize for performance and SEO.
 
 ### Hot Reloading
 Automatic reloading of templates and static files during development.
