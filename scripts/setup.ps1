@@ -83,6 +83,12 @@ function Update-ImportPaths {
                 Set-Content -Path $file.FullName -Value $updatedContent
                 $count++
             }
+            
+            if ($content -match "import.*`"$OldName/core") {
+                $updatedContent = $content -replace "`"$OldName/core", "`"$NewName/core"
+                Set-Content -Path $file.FullName -Value $updatedContent
+                $count++
+            }
         }
         
         if ($count -gt 0) {

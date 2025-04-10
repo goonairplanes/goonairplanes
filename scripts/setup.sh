@@ -70,7 +70,13 @@ update_import_paths() {
     if ! find "$dir" -type f -name "*.go" -exec grep -l "import.*\"$old_name" {} \; | xargs -r sed -i "s|\"$old_name|\"$new_name|g" > /dev/null 2>&1; then
         log_warning "Some import paths may not have been updated properly"
     else
-        log_success "Updated import paths in source files"
+        log_success "Updated standard import paths in source files"
+    fi
+    
+    if ! find "$dir" -type f -name "*.go" -exec grep -l "import.*\"$old_name/core" {} \; | xargs -r sed -i "s|\"$old_name/core|\"$new_name/core|g" > /dev/null 2>&1; then
+        log_warning "Some core import paths may not have been updated properly"
+    else
+        log_success "Updated core import paths in source files"
     fi
 }
 
