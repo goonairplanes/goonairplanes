@@ -8,7 +8,7 @@
   </p>
 </div>
 
-[Why Go on Airplanes?](#MANIFEST.md)
+[Why Go on Airplanes exists?](https://github.com/kleeedolinux/goonairplanes/blob/main/MANIFEST.md)
 
 Hey fellow developers! Tired of wrestling with complex frameworks just to build simple web apps? Meet **Go on Airplanes** – your new co-pilot for building web applications that's so simple, you'll feel like you're coding with wings. 🛫
 
