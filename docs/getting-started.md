@@ -143,6 +143,28 @@ project/
    - [Performance](best-practices.md#performance)
    - [Security](best-practices.md#security)
 
+## Asset Bundling
+
+Go on Airplanes includes a production-ready asset bundling system for optimizing page load times:
+
+1. **Enable Bundling**
+   ```go
+   // In your app startup code
+   app.Marley.BundleMode = true
+   ```
+
+2. **How It Works**
+   - CSS and JS files in your static directory are automatically combined
+   - Bundles are generated during template loading
+   - File sizes are reduced for faster downloads
+
+3. **Using Bundled Assets in Templates**
+   ```html
+   <!-- In your layout.html file -->
+   <link rel="stylesheet" href="{{index .Bundles "css"}}">
+   <script src="{{index .Bundles "js"}}"></script>
+   ```
+
 ## Troubleshooting
 
 Common issues and solutions:

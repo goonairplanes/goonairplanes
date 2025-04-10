@@ -34,6 +34,8 @@ type Marley struct {
 	cacheExpiry     time.Time
 	cacheTTL        time.Duration
 	Logger          *AppLogger
+	BundledAssets   map[string]string
+	BundleMode      bool
 }
 
 func NewMarley(logger *AppLogger) *Marley {
@@ -44,6 +46,8 @@ func NewMarley(logger *AppLogger) *Marley {
 		PageMetadata:    make(map[string]*PageMetadata),
 		cacheTTL:        5 * time.Minute,
 		Logger:          logger,
+		BundledAssets:   make(map[string]string),
+		BundleMode:      false,
 	}
 }
 
@@ -69,6 +73,16 @@ func (m *Marley) LoadTemplates() error {
 			errorCh <- err
 		}
 	}()
+
+	if m.BundleMode {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := m.bundleAssets(); err != nil {
+				errorCh <- err
+			}
+		}()
+	}
 
 	layoutCh := make(chan []byte)
 	layoutErrCh := make(chan error, 1)
@@ -136,11 +150,9 @@ func (m *Marley) LoadTemplates() error {
 		return err
 	}
 
-	
 	templates := make(map[string]*template.Template)
 	pageMetadata := make(map[string]*PageMetadata)
 
-	
 	templateCh := make(chan struct {
 		path     string
 		tmpl     *template.Template
@@ -150,11 +162,9 @@ func (m *Marley) LoadTemplates() error {
 	semaphore := make(chan struct{}, 4)
 	errCh := make(chan error, len(templatePaths))
 
-	
 	var collectorWg sync.WaitGroup
 	collectorWg.Add(1)
 
-	
 	go func() {
 		defer collectorWg.Done()
 		for i := 0; i < len(templatePaths); i++ {
@@ -162,7 +172,6 @@ func (m *Marley) LoadTemplates() error {
 			templates[result.path] = result.tmpl
 			pageMetadata[result.path] = result.metadata
 
-			
 			if AppConfig.SSGEnabled && result.metadata.RenderMode == "ssg" {
 				if err := m.generateStaticFile(result.path, result.tmpl, result.metadata); err != nil {
 					m.Logger.WarnLog.Printf("Failed to generate static file for %s: %v", result.path, err)
@@ -173,7 +182,6 @@ func (m *Marley) LoadTemplates() error {
 		}
 	}()
 
-	
 	for _, path := range templatePaths {
 		wg.Add(1)
 		go func(p string) {
@@ -190,10 +198,8 @@ func (m *Marley) LoadTemplates() error {
 				return
 			}
 
-			
 			metadata := extractPageMetadata(string(pageContent), routePath)
 
-			
 			processedContent := processPageContent(string(pageContent), metadata)
 
 			tmpl := template.New("layout")
@@ -218,7 +224,6 @@ func (m *Marley) LoadTemplates() error {
 				return
 			}
 
-			
 			templateCh <- struct {
 				path     string
 				tmpl     *template.Template
@@ -229,14 +234,11 @@ func (m *Marley) LoadTemplates() error {
 		}(path)
 	}
 
-	
 	wg.Wait()
 	close(errCh)
 
-	
 	close(templateCh)
 
-	
 	collectorWg.Wait()
 
 	for err := range errCh {
@@ -267,19 +269,16 @@ func extractPageMetadata(content, _ string) *PageMetadata {
 		RenderMode:  AppConfig.DefaultRenderMode,
 	}
 
-	
 	for k, v := range AppConfig.DefaultMetaTags {
 		metadata.MetaTags[k] = v
 	}
 
-	
 	titleMatch := titleRegex.FindStringSubmatch(content)
 	if len(titleMatch) > 1 {
 		metadata.Title = strings.TrimSpace(titleMatch[1])
 		metadata.MetaTags["og:title"] = metadata.Title
 	}
 
-	
 	descMatch := descRegex.FindStringSubmatch(content)
 	if len(descMatch) > 1 {
 		metadata.Description = strings.TrimSpace(descMatch[1])
@@ -287,7 +286,6 @@ func extractPageMetadata(content, _ string) *PageMetadata {
 		metadata.MetaTags["og:description"] = metadata.Description
 	}
 
-	
 	metaMatches := metaTagRegex.FindAllStringSubmatch(content, -1)
 	for _, match := range metaMatches {
 		if len(match) > 1 {
@@ -300,7 +298,6 @@ func extractPageMetadata(content, _ string) *PageMetadata {
 		}
 	}
 
-	
 	renderMatch := renderModeRegex.FindStringSubmatch(content)
 	if len(renderMatch) > 1 {
 		mode := strings.ToLower(renderMatch[1])
@@ -313,7 +310,7 @@ func extractPageMetadata(content, _ string) *PageMetadata {
 }
 
 func processPageContent(content string, _ *PageMetadata) string {
-	
+
 	content = titleRegex.ReplaceAllString(content, "")
 	content = descRegex.ReplaceAllString(content, "")
 	content = metaTagRegex.ReplaceAllString(content, "")
@@ -327,17 +324,14 @@ func (m *Marley) generateStaticFile(routePath string, tmpl *template.Template, m
 		return nil
 	}
 
-	
 	relativePath := strings.TrimPrefix(routePath, "/")
 	if routePath == "/" {
 		relativePath = "index"
 	}
 
-	
 	staticDir := AppConfig.SSGDir
 	fullPath := filepath.Join(staticDir, relativePath+".html")
 
-	
 	dirPath := filepath.Dir(fullPath)
 	if err := os.MkdirAll(dirPath, 0755); err != nil {
 		return fmt.Errorf("failed to create directory for static file: %w", err)
@@ -345,14 +339,12 @@ func (m *Marley) generateStaticFile(routePath string, tmpl *template.Template, m
 
 	m.Logger.InfoLog.Printf("Generating static file at: %s", fullPath)
 
-	
 	file, err := os.Create(fullPath)
 	if err != nil {
 		return fmt.Errorf("failed to create static file: %w", err)
 	}
 	defer file.Close()
 
-	
 	data := map[string]interface{}{
 		"Metadata":  metadata,
 		"Config":    &AppConfig,
@@ -429,6 +421,62 @@ func getRoutePathFromFile(fullPath, basePath string) string {
 	return relativePath
 }
 
+func (m *Marley) bundleAssets() error {
+	assetTypes := map[string]string{
+		".css": "css",
+		".js":  "js",
+	}
+
+	for ext, assetType := range assetTypes {
+		bundleName := fmt.Sprintf("bundle.%s", assetType)
+		bundlePath := filepath.Join(AppConfig.StaticDir, bundleName)
+
+		var bundleContent strings.Builder
+		assetFiles := make([]string, 0)
+
+		err := filepath.Walk(AppConfig.StaticDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if !info.IsDir() && filepath.Ext(path) == ext && !strings.Contains(path, "bundle.") {
+				assetFiles = append(assetFiles, path)
+			}
+			return nil
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to scan static directory for %s files: %w", assetType, err)
+		}
+
+		if len(assetFiles) == 0 {
+			continue
+		}
+
+		for _, assetPath := range assetFiles {
+			content, err := os.ReadFile(assetPath)
+			if err != nil {
+				return fmt.Errorf("failed to read asset file %s: %w", assetPath, err)
+			}
+
+			relPath, _ := filepath.Rel(AppConfig.StaticDir, assetPath)
+			bundleContent.WriteString(fmt.Sprintf("/* %s */\n", relPath))
+			bundleContent.Write(content)
+			bundleContent.WriteString("\n\n")
+		}
+
+		err = os.WriteFile(bundlePath, []byte(bundleContent.String()), 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write bundle file %s: %w", bundlePath, err)
+		}
+
+		m.BundledAssets[assetType] = fmt.Sprintf("/static/%s", bundleName)
+		m.Logger.InfoLog.Printf("Created %s bundle with %d files", assetType, len(assetFiles))
+	}
+
+	return nil
+}
+
 func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interface{}) error {
 	m.mutex.RLock()
 	tmpl, exists := m.Templates[route]
@@ -439,17 +487,14 @@ func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interf
 		return fmt.Errorf("template for route %s not found", route)
 	}
 
-	
 	if AppConfig.SSGEnabled && metadataExists && metadata.RenderMode == "ssg" {
 		staticPath := route
 		if staticPath == "/" {
 			staticPath = "/index"
 		}
 
-		
 		ssgFilePath := filepath.Join(AppConfig.SSGDir, strings.TrimPrefix(staticPath, "/")) + ".html"
 		if _, err := os.Stat(ssgFilePath); err == nil {
-			
 			w.Header().Set("Location", "/static/generated"+staticPath+".html")
 			w.WriteHeader(http.StatusTemporaryRedirect)
 			return nil
@@ -458,23 +503,23 @@ func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interf
 		}
 	}
 
-	
 	if metadataExists {
-		
 		var combinedData map[string]interface{}
 
-		
 		if existingData, ok := data.(map[string]interface{}); ok {
 			combinedData = existingData
 			combinedData["Metadata"] = metadata
 			combinedData["Config"] = &AppConfig
 		} else {
-			
 			combinedData = map[string]interface{}{
 				"Data":     data,
 				"Metadata": metadata,
 				"Config":   &AppConfig,
 			}
+		}
+
+		if m.BundleMode {
+			combinedData["Bundles"] = m.BundledAssets
 		}
 
 		return tmpl.ExecuteTemplate(w, "layout", combinedData)

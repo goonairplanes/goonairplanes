@@ -7,9 +7,10 @@
 ✅ **Route System**  
 ✅ **Middleware System**  
 ✅ **JSON Utilities**  
+✅ **Template Cache + SSG**  
+✅ **Enhaced Bundling**  
 
 🔥 **Pending Features**  
-🟡 **Template Cache + SSG**  
 🟡 **File Uploads + Form Helpers**  
 🟡 **Plugin System**  
 🟡 **i18n Support**  
