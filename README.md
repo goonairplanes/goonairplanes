@@ -78,10 +78,10 @@ project/
 
 Create HTML files in the `app` directory to define routes:
 
-- `app/about.html` → `/about`
-- `app/contact.html` → `/contact`
+- `app/about/index.html` → `/about`
+- `app/contact/index.html` → `/contact`
 - `app/blog/index.html` → `/blog`
-- `app/blog/post.html` → `/blog/post`
+- `app/blog/post/index.html` → `/blog/post`
 
 ### Dynamic Routes
 
