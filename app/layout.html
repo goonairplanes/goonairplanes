@@ -1,0 +1,53 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go on Airplanes App</title>
+    
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="icon" type="image/png" href="/static/favicon.ico"/>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    
+    <link rel="stylesheet" href="/static/global.css">
+    
+    
+    {{template "head" . }}
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <h1 class="text-3xl font-bold text-gray-900">
+                Go on Airplanes Framework
+            </h1>
+        </div>
+    </header>
+    
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            
+            {{template "content" . }}
+        </div>
+    </main>
+    
+    <footer class="bg-white shadow mt-auto">
+        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 text-center text-gray-500">
+            <p>Built with Go on Airplanes - The Go-based fullstack framework</p>
+        </div>
+    </footer>
+    
+    
+    {{template "scripts" . }}
+    
+    
+    <script src="/static/scripts.js"></script>
+</body>
+</html>
+{{end}}
+
+{{define "head"}}{{end}}
+{{define "scripts"}}{{end}} 

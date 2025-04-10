@@ -1,0 +1,41 @@
+{{ define "content" }}
+<div class="text-center">
+    <h2 class="text-2xl font-bold mb-6">Welcome to Go on Airplanes</h2>
+    <p class="mb-4">A Go-based fullstack framework with HTML file-based routing</p>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <div class="text-center">
+                    <h3 class="text-lg font-medium">File-based Routing</h3>
+                    <p class="mt-2 text-sm text-gray-500">Create pages by adding HTML files in the app directory</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <div class="text-center">
+                    <h3 class="text-lg font-medium">Component System</h3>
+                    <p class="mt-2 text-sm text-gray-500">Create reusable components with Go templates</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <div class="text-center">
+                    <h3 class="text-lg font-medium">Zero Config</h3>
+                    <p class="mt-2 text-sm text-gray-500">Just run and go - no build step required</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-10">
+        <a href="/dashboard" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+            Go to Dashboard
+        </a>
+    </div>
+</div>
+{{ end }} 
