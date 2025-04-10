@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="img/benchmark.png" alt="Go on Airplanes Logo" width="180" />
+  <img src="img/benchmark.png" alt="Go on Airplanes Logo" width="1080" />
   <br><br>
   <p>
     <em>wrk -t4 -c100 -d30s</em>
