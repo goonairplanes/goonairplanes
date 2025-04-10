@@ -1,6 +1,6 @@
 <div align="center">
   <img src="img/benchmark.png" alt="Go on Airplanes Logo" width="1080" />
-  <sub>> Interestingly, the only metrics where Next.js surpasses GOA are… latency and error rate.
+  <sub> > Interestingly, the only metrics where Next.js surpasses GOA are… latency and error rate.
 In other words: it’s slower, and it fails more. 🫠</sub>
   <br><br>
   <p>
