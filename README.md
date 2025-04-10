@@ -160,6 +160,43 @@ Use them anywhere:
 </html>
 ```
 
+## 🖥️ Rendering Modes
+
+Go on Airplanes implements both Server-Side Rendering (SSR) and Static Site Generation (SSG) similar to Next.js but with a lightweight, faster approach:
+
+### Server-Side Rendering (SSR)
+
+SSR generates the full HTML on the server for each request, providing:
+- **SEO-friendly content** for search engines
+- **Always up-to-date data** generated at request time
+- **Optimized social media sharing** with accurate preview cards
+
+To use SSR (default mode):
+```html
+<!--render:ssr-->
+```
+
+### Static Site Generation (SSG)
+
+SSG pre-renders pages at build time for ultra-fast delivery:
+- **Lightning-fast page loads** with pre-generated content
+- **Reduced server load** with no processing per request
+- **CDN-compatible** for global distribution
+
+To use SSG:
+```html
+<!--render:ssg-->
+```
+
+### Enhanced Metadata
+
+Both rendering modes support metadata for SEO:
+```html
+<!--title:Page Title-->
+<!--description:Page description-->
+<!--meta:keywords:keyword1,keyword2-->
+```
+
 ## When You Need More Power
 
 ### API Endpoints Made Simple
