@@ -44,6 +44,36 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+validate_project_name() {
+    local name="$1"
+    
+    if [[ "$name" =~ [[:space:]] ]]; then
+        log_error "Project name cannot contain spaces"
+        return 1
+    fi
+    
+    if [[ "$name" =~ [A-Z] ]]; then
+        log_error "Project name cannot contain uppercase letters"
+        return 1
+    fi
+    
+    return 0
+}
+
+update_import_paths() {
+    local old_name="$1"
+    local new_name="$2"
+    local dir="$3"
+    
+    log_step "Updating import paths in source files..."
+    
+    if ! find "$dir" -type f -name "*.go" -exec grep -l "import.*\"$old_name" {} \; | xargs -r sed -i "s|\"$old_name|\"$new_name|g" > /dev/null 2>&1; then
+        log_warning "Some import paths may not have been updated properly"
+    else
+        log_success "Updated import paths in source files"
+    fi
+}
+
 setup_goa() {
     log_step "Checking for Git installation..."
     if ! command_exists git; then
@@ -83,10 +113,18 @@ setup_goa() {
     log_step "Project Setup"
     DEFAULT_NAME=$(basename "$(pwd)")
     
-    read -rp "Enter project name (default: $DEFAULT_NAME): " PROJECT_NAME
-    if [ -z "$PROJECT_NAME" ]; then
-        PROJECT_NAME="$DEFAULT_NAME"
-    fi
+    while true; do
+        read -rp "Enter project name (default: $DEFAULT_NAME): " PROJECT_NAME
+        if [ -z "$PROJECT_NAME" ]; then
+            PROJECT_NAME="$DEFAULT_NAME"
+        fi
+        
+        if validate_project_name "$PROJECT_NAME"; then
+            break
+        else
+            log_warning "Please enter a valid project name (lowercase letters, no spaces)"
+        fi
+    done
     
     read -rp "Use current directory? (Y/n): " USE_CURRENT_DIR
     if [ -z "$USE_CURRENT_DIR" ] || [ "$USE_CURRENT_DIR" = "y" ] || [ "$USE_CURRENT_DIR" = "Y" ]; then
@@ -136,12 +174,27 @@ setup_goa() {
     
     log_success "Repository cloned successfully"
     
-    log_step "Initializing new Git repository..."
+    log_step "Cleaning up unnecessary files..."
     if ! cd "$PROJECT_DIR"; then
         log_error "Failed to change to project directory"
         return 1
     fi
     
+    rm -rf img README.md MANIFEST.md CODE_OF_CONDUCT.md ROADMAP.md SECURITY.md
+    
+    read -rp "Do you want to keep local documentation? (Y/n): " KEEP_DOCS
+    if [ -z "$KEEP_DOCS" ] || [ "$KEEP_DOCS" = "n" ] || [ "$KEEP_DOCS" = "N" ]; then
+        rm -rf docs/
+        log_success "Documentation removed"
+    else
+        log_success "Documentation kept"
+    fi
+    
+    rm -rf scripts/
+    
+    log_success "Cleanup completed"
+    
+    log_step "Initializing new Git repository..."
     if ! git init > /dev/null 2>&1; then
         log_error "Failed to initialize Git repository"
     else
@@ -158,6 +211,8 @@ setup_goa() {
         else
             log_success "Updated module name in go.mod"
         fi
+        
+        update_import_paths "goonairplanes" "$PROJECT_NAME" "."
     fi
     
     log_step "Installing dependencies..."

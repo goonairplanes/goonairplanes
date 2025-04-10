@@ -46,6 +46,56 @@ function Test-CommandExists {
     return $exists
 }
 
+function Test-ValidProjectName {
+    param (
+        [string]$ProjectName
+    )
+    
+    if ($ProjectName -match "\s") {
+        return $false, "Project name cannot contain spaces"
+    }
+    
+    if ($ProjectName -cmatch "[A-Z]") {
+        return $false, "Project name cannot contain uppercase letters"
+    }
+    
+    return $true, ""
+}
+
+function Update-ImportPaths {
+    param (
+        [string]$OldName,
+        [string]$NewName,
+        [string]$Directory
+    )
+    
+    Write-Styled "Updating import paths in source files..." -Color $Theme.Primary -Prefix "Config"
+    
+    try {
+        $goFiles = Get-ChildItem -Path $Directory -Filter "*.go" -Recurse
+        $count = 0
+        
+        foreach ($file in $goFiles) {
+            $content = Get-Content -Path $file.FullName -Raw
+            
+            if ($content -match "import.*`"$OldName") {
+                $updatedContent = $content -replace "`"$OldName", "`"$NewName"
+                Set-Content -Path $file.FullName -Value $updatedContent
+                $count++
+            }
+        }
+        
+        if ($count -gt 0) {
+            Write-Styled "Updated import paths in $count files" -Color $Theme.Success -Prefix "Config"
+        } else {
+            Write-Styled "No import paths needed updating" -Color $Theme.Info -Prefix "Config"
+        }
+    }
+    catch {
+        Write-Styled "Some import paths may not have been updated properly" -Color $Theme.Warning -Prefix "Config"
+    }
+}
+
 Write-Host $Logo -ForegroundColor $Theme.Primary
 Write-Host "Go on Airplanes - Setup Wizard" -ForegroundColor $Theme.Primary
 Write-Host "Fly high with simple web development`n" -ForegroundColor $Theme.Info
@@ -74,9 +124,22 @@ function Setup-GoOnAirplanes {
     $defaultName = Split-Path -Path (Get-Location) -Leaf
     Write-Host "`nProject Setup" -ForegroundColor $Theme.Primary
     
-    $projectName = Read-Host "Enter project name (default: $defaultName)"
-    if ([string]::IsNullOrWhiteSpace($projectName)) {
-        $projectName = $defaultName
+    $projectName = ""
+    $validName = $false
+    
+    while (-not $validName) {
+        $projectName = Read-Host "Enter project name (default: $defaultName)"
+        if ([string]::IsNullOrWhiteSpace($projectName)) {
+            $projectName = $defaultName
+        }
+        
+        $validationResult = Test-ValidProjectName -ProjectName $projectName
+        $validName = $validationResult[0]
+        
+        if (-not $validName) {
+            Write-Styled $validationResult[1] -Color $Theme.Error -Prefix "Error"
+            Write-Styled "Please enter a valid project name (lowercase letters, no spaces)" -Color $Theme.Warning
+        }
     }
     
     $useCurrentDir = Read-Host "Use current directory? (Y/n)"
@@ -126,8 +189,38 @@ function Setup-GoOnAirplanes {
     
     Write-Styled "Repository cloned successfully" -Color $Theme.Success -Prefix "Git"
     
-    Write-Styled "Initializing new Git repository..." -Color $Theme.Primary -Prefix "Git"
+    Write-Styled "Cleaning up unnecessary files..." -Color $Theme.Primary -Prefix "Files"
     Push-Location $projectDir
+    
+    try {
+        $filesToRemove = @("img", "README.md", "MANIFEST.md", "CODE_OF_CONDUCT.md", "ROADMAP.md", "SECURITY.md")
+        foreach ($file in $filesToRemove) {
+            if (Test-Path $file) {
+                Remove-Item -Path $file -Recurse -Force
+            }
+        }
+        
+        $keepDocs = Read-Host "Do you want to keep local documentation? (Y/n)"
+        if ($keepDocs -eq "n" -or $keepDocs -eq "N") {
+            if (Test-Path "docs") {
+                Remove-Item -Path "docs" -Recurse -Force
+                Write-Styled "Documentation removed" -Color $Theme.Success -Prefix "Files"
+            }
+        } else {
+            Write-Styled "Documentation kept" -Color $Theme.Success -Prefix "Files"
+        }
+        
+        if (Test-Path "scripts") {
+            Remove-Item -Path "scripts" -Recurse -Force
+        }
+        
+        Write-Styled "Cleanup completed" -Color $Theme.Success -Prefix "Files"
+    }
+    catch {
+        Write-Styled $_.Exception.Message -Color $Theme.Error -Prefix "Error"
+    }
+    
+    Write-Styled "Initializing new Git repository..." -Color $Theme.Primary -Prefix "Git"
     
     try {
         git init 
@@ -148,6 +241,8 @@ function Setup-GoOnAirplanes {
         $goMod = $goMod -replace "module goonairplanes", "module $projectName"
         Set-Content -Path $goModPath -Value $goMod
         Write-Styled "Updated module name in go.mod" -Color $Theme.Success -Prefix "Config"
+        
+        Update-ImportPaths -OldName "goonairplanes" -NewName $projectName -Directory $projectDir
     }
     
     Write-Styled "Installing dependencies..." -Color $Theme.Primary -Prefix "Go"
