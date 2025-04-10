@@ -8,6 +8,14 @@ In other words: it’s slower, and it fails more. 🫠</sub>
   </p>
 </div>
 
+
+> ⚙️ **Benchmark Info**  
+> All tests were run using default configs and each framework's sample page.  
+> Same machine, same WSL instance, no tuning, no tricks.  
+> Fully reproducible with just `go run . / go build` or `npm run dev / npm run build`.
+> You can install [wrk here](https://github.com/wg/wrk) and reproduce this test with `wrk -t4 -c100 -d30s`.
+
+
 ## Benchmark Comparison: GOA vs. Next.js  
 
 | **Metric**                | **GOA**                            | **Next.js**                       | **Why It Matters**                              |
