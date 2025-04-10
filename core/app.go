@@ -89,7 +89,6 @@ func (app *GonAirApp) getConfigureMiddlewareFunc() func(*GonAirApp) {
 			app.Router.Use(CORSMiddleware(app.Config.AllowedOrigins))
 		}
 
-		
 		if app.Config.SSGEnabled {
 			app.Router.Use(SSGMiddleware(app.Logger))
 			app.Logger.InfoLog.Printf("SSG enabled, static files will be generated in %s", app.Config.SSGDir)
@@ -129,11 +128,12 @@ func (app *GonAirApp) Start() error {
 
 func (app *GonAirApp) printBanner(port string) {
 	banner := `
-   ______                                              
-  / ____/___   
- / / __ / _ \ 
-/ /_/ // /_/ /
-\____/ \____/  
+   ██████╗  ██████╗      ██████╗ ███╗   ██╗     █████╗ ██╗██████╗ ██████╗ ██╗      █████╗ ███╗   ██╗███████╗███████╗
+  ██╔════╝ ██╔═══██╗    ██╔═══██╗████╗  ██║    ██╔══██╗██║██╔══██╗██╔══██╗██║     ██╔══██╗████╗  ██║██╔════╝██╔════╝
+  ██║  ███╗██║   ██║    ██║   ██║██╔██╗ ██║    ███████║██║██████╔╝██████╔╝██║     ███████║██╔██╗ ██║█████╗  ███████╗
+  ██║   ██║██║   ██║    ██║   ██║██║╚██╗██║    ██╔══██║██║██╔══██╗██╔═══╝ ██║     ██╔══██║██║╚██╗██║██╔══╝  ╚════██║
+  ╚██████╔╝╚██████╔╝    ╚██████╔╝██║ ╚████║    ██║  ██║██║██║  ██║██║     ███████╗██║  ██║██║ ╚████║███████╗███████║
+   ╚═════╝  ╚═════╝      ╚═════╝ ╚═╝  ╚═══╝    ╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝
 `
 	fmt.Println(strings.TrimSpace(banner))
 	app.Logger.InfoLog.Printf("Go on Airplanes ready for takeoff!")
