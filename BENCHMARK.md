@@ -1,10 +1,20 @@
 <div align="center">
   <img src="img/benchmark.png" alt="Go on Airplanes Logo" width="1080" />
+  <sub> Interestingly, the only metrics where Next.js surpasses GOA are… latency and error rate.
+In other words: it’s slower, and it fails more. 🫠</sub>
   <br><br>
   <p>
     <em>wrk -t4 -c100 -d30s</em>
   </p>
 </div>
+
+
+> ⚙️ **Benchmark Info**  
+> All tests were run using default configs and each framework's sample page. 
+> Same machine, same WSL instance, no tuning, no tricks.  
+> Fully reproducible with just `go run . / go build` or `npm run dev / npm run build`. <br>
+> You can install [wrk here](https://github.com/wg/wrk) and reproduce this test with `wrk -t4 -c100 -d30s`.
+
 
 ## Benchmark Comparison: GOA vs. Next.js  
 
@@ -36,12 +46,5 @@ Whether you're rendering 10k static pages, handling real-time APIs, or streaming
 
 GOA proves you don’t need a spaceship to win the performance race. Sometimes, all you need is a framework built like a **precision engine**. ✈️  
 
----  
-
-**Revised Key Line**:  
-"With GOA, you get everything Next.js offers—without the rocket science."  
-
-**Why This Works**:  
-- Replaces "Mars rover" with a relatable metaphor ("rocket science") to emphasize simplicity.  
-- Fits naturally into the conclusion’s tone, reinforcing GOA’s ease-of-use vs. Next.js’s hidden complexity.  
-- Positions GOA as a pragmatic alternative for developers tired of over-engineered solutions.
+👉 Ready to ditch the bloat? [Get started with GOA](https://github.com/kleeedolinux/goonairplanes/) – and fly past the competition.
+> Why fight Node.js’s boss-level complexity when you can just... GO(A)?

@@ -17,6 +17,7 @@
 * [Security Policy](https://github.com/kleeedolinux/goonairplanes/blob/main/SECURITY.md) - Reporting vulnerabilities
 * [Code of Conduct](https://github.com/kleeedolinux/goonairplanes/blob/main/CODE_OF_CONDUCT.md) - Community guidelines
 * [Contributing](https://github.com/kleeedolinux/goonairplanes/blob/main/CONTRIBUTING.md) - How to contribute
+* [Benchmark](https://github.com/kleeedolinux/goonairplanes/blob/main/BENCHMARK.md) - GOA vs NextJS
 
 Hey fellow developers! Tired of wrestling with complex frameworks just to build simple web apps? Meet **Go on Airplanes** – your new co-pilot for building web applications that's so simple, you'll feel like you're coding with wings. 🛫
 
