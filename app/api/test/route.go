@@ -1,19 +1,25 @@
-package main
+
+package api
 
 import (
-	"encoding/json"
+	"goonairplanes/core"
 	"net/http"
 	"time"
 )
 
-func Handler(w http.ResponseWriter, r *http.Request) {
+
+
+func Handler(ctx *core.APIContext) {
+	
 	response := map[string]interface{}{
 		"message":   "Hello from Go on Airplanes API route!",
 		"timestamp": time.Now().Format(time.RFC3339),
-		"method":    r.Method,
-		"path":      r.URL.Path,
+		"method":    ctx.Request.Method,
+		"path":      ctx.Request.URL.Path,
+		"params":    ctx.Params,
+		"success":   true,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	
+	ctx.Success(response, http.StatusOK)
 }

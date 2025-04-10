@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -40,7 +41,6 @@ type APIHandler interface {
 	Handler(w http.ResponseWriter, r *http.Request)
 }
 
-
 type APIContext struct {
 	Request *http.Request
 	Writer  http.ResponseWriter
@@ -48,21 +48,17 @@ type APIContext struct {
 	Config  *Config
 }
 
-
 func (ctx *APIContext) Success(data interface{}, statusCode int) {
 	RenderSuccess(ctx.Writer, data, statusCode)
 }
-
 
 func (ctx *APIContext) Error(message string, statusCode int) {
 	RenderError(ctx.Writer, message, statusCode)
 }
 
-
 func (ctx *APIContext) ParseBody(v interface{}) error {
 	return ParseBody(ctx.Request, v)
 }
-
 
 func (ctx *APIContext) QueryParams() map[string]interface{} {
 	return ParseJSONParams(ctx.Request)
@@ -123,7 +119,6 @@ func (r *Router) AddAPIRoute(path string, handler http.HandlerFunc, middleware .
 	})
 }
 
-
 func (r *Router) API(path string, handler func(*APIContext), middleware ...MiddlewareFunc) {
 	wrappedHandler := func(w http.ResponseWriter, req *http.Request) {
 		params := extractParamsFromRequest(req.URL.Path, path)
@@ -153,11 +148,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if strings.HasPrefix(path, "/static") {
 		for _, route := range r.Routes {
 			if route.IsStatic {
-
 				if route.Middleware == nil {
 					route.Middleware = NewMiddlewareChain()
 				}
-
 				handler := r.GlobalMiddleware.Then(http.HandlerFunc(route.Handler))
 				handler.ServeHTTP(w, req)
 				return
@@ -170,11 +163,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			if route.IsAPI {
 				apiPath := route.Path
 				if path == apiPath || strings.HasPrefix(path, apiPath+"/") {
-
 					if route.Middleware == nil {
 						route.Middleware = NewMiddlewareChain()
 					}
-
 					handler := r.GlobalMiddleware.Then(route.Middleware.Then(http.HandlerFunc(route.Handler)))
 					handler.ServeHTTP(w, req)
 					return
@@ -191,11 +182,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if !route.IsParam && !route.IsStatic && !route.IsAPI {
 			routePath := route.Path
 			if path == routePath {
-
 				if route.Middleware == nil {
 					route.Middleware = NewMiddlewareChain()
 				}
-
 				handler := r.GlobalMiddleware.Then(route.Middleware.Then(http.HandlerFunc(route.Handler)))
 				handler.ServeHTTP(w, req)
 				return
@@ -206,11 +195,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	for _, route := range r.Routes {
 		if route.IsParam && route.Pattern != nil {
 			if route.Pattern.MatchString(path) {
-
 				if route.Middleware == nil {
 					route.Middleware = NewMiddlewareChain()
 				}
-
 				handler := r.GlobalMiddleware.Then(route.Middleware.Then(http.HandlerFunc(route.Handler)))
 				handler.ServeHTTP(w, req)
 				return
@@ -275,6 +262,244 @@ func (r *Router) InitRoutes() error {
 	return nil
 }
 
+func (r *Router) loadAPIRoutes() (int, error) {
+	apiBasePath := filepath.Join(AppConfig.AppDir, "api")
+	apiRouteCount := 0
+
+	if _, err := os.Stat(apiBasePath); os.IsNotExist(err) {
+		return 0, nil
+	}
+
+	
+	usersPath := filepath.Join(apiBasePath, "users")
+	if _, err := os.Stat(usersPath); err == nil {
+		
+		r.API("/api/users", func(ctx *APIContext) {
+			
+			switch ctx.Request.Method {
+			case http.MethodGet:
+				
+				r.handleUsersGet(ctx)
+			case http.MethodPost:
+				
+				r.handleUsersPost(ctx)
+			default:
+				ctx.Error("Method not allowed", http.StatusMethodNotAllowed)
+			}
+		})
+
+		
+		r.API("/api/users/[id]", func(ctx *APIContext) {
+			
+			switch ctx.Request.Method {
+			case http.MethodGet:
+				
+				r.handleUserGetById(ctx)
+			case http.MethodPut:
+				
+				r.handleUserPutById(ctx)
+			case http.MethodDelete:
+				
+				r.handleUserDeleteById(ctx)
+			default:
+				ctx.Error("Method not allowed", http.StatusMethodNotAllowed)
+			}
+		})
+
+		r.Logger.InfoLog.Printf("API route registered: %s", "/api/users")
+		apiRouteCount += 2 
+	}
+
+	
+	testPath := filepath.Join(apiBasePath, "test")
+	if _, err := os.Stat(testPath); err == nil {
+		
+		r.API("/api/test", func(ctx *APIContext) {
+			
+			r.handleTestAPI(ctx)
+		})
+
+		r.Logger.InfoLog.Printf("API route registered: %s", "/api/test")
+		apiRouteCount++
+	}
+
+	return apiRouteCount, nil
+}
+
+
+var users = []map[string]interface{}{
+	{"id": 1, "name": "John Doe", "email": "john@example.com", "username": "johndoe"},
+	{"id": 2, "name": "Jane Smith", "email": "jane@example.com", "username": "janesmith"},
+	{"id": 3, "name": "Bob Johnson", "email": "bob@example.com", "username": "bobjohnson"},
+}
+
+
+func (r *Router) handleUsersGet(ctx *APIContext) {
+	
+	page, perPage := GetPaginationParams(ctx.Request, 10)
+
+	
+	totalItems := len(users)
+	startIndex := (page - 1) * perPage
+	endIndex := startIndex + perPage
+
+	if startIndex >= totalItems {
+		
+		meta := NewPaginationMeta(page, perPage, totalItems)
+		RenderPaginated(ctx.Writer, []map[string]interface{}{}, meta, http.StatusOK)
+		return
+	}
+
+	if endIndex > totalItems {
+		endIndex = totalItems
+	}
+
+	
+	pagedUsers := users[startIndex:endIndex]
+
+	
+	meta := NewPaginationMeta(page, perPage, totalItems)
+
+	
+	RenderPaginated(ctx.Writer, pagedUsers, meta, http.StatusOK)
+}
+
+
+func (r *Router) handleUsersPost(ctx *APIContext) {
+	
+	var newUser map[string]interface{}
+	if err := ParseBody(ctx.Request, &newUser); err != nil {
+		ctx.Error("Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	
+	if newUser["name"] == nil || newUser["email"] == nil || newUser["username"] == nil {
+		ctx.Error("Name, email and username are required", http.StatusBadRequest)
+		return
+	}
+
+	
+	newUser["id"] = len(users) + 1
+
+	
+	users = append(users, newUser)
+
+	
+	ctx.Success(newUser, http.StatusCreated)
+}
+
+
+func (r *Router) handleUserGetById(ctx *APIContext) {
+	
+	idStr := ctx.Params["id"]
+	id := 0
+	if idStr != "" {
+		id, _ = strconv.Atoi(idStr)
+	}
+
+	if id <= 0 {
+		ctx.Error("Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	
+	for _, user := range users {
+		if userId, ok := user["id"].(int); ok && userId == id {
+			ctx.Success(user, http.StatusOK)
+			return
+		}
+	}
+
+	
+	ctx.Error("User not found", http.StatusNotFound)
+}
+
+
+func (r *Router) handleUserPutById(ctx *APIContext) {
+	
+	idStr := ctx.Params["id"]
+	id := 0
+	if idStr != "" {
+		id, _ = strconv.Atoi(idStr)
+	}
+
+	if id <= 0 {
+		ctx.Error("Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	
+	var updatedUser map[string]interface{}
+	if err := ParseBody(ctx.Request, &updatedUser); err != nil {
+		ctx.Error("Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	
+	for i, user := range users {
+		if userId, ok := user["id"].(int); ok && userId == id {
+			
+			updatedUser["id"] = id
+
+			
+			users[i] = updatedUser
+
+			
+			ctx.Success(updatedUser, http.StatusOK)
+			return
+		}
+	}
+
+	
+	ctx.Error("User not found", http.StatusNotFound)
+}
+
+
+func (r *Router) handleUserDeleteById(ctx *APIContext) {
+	
+	idStr := ctx.Params["id"]
+	id := 0
+	if idStr != "" {
+		id, _ = strconv.Atoi(idStr)
+	}
+
+	if id <= 0 {
+		ctx.Error("Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	
+	for i, user := range users {
+		if userId, ok := user["id"].(int); ok && userId == id {
+			
+			users = append(users[:i], users[i+1:]...)
+
+			
+			ctx.Success(nil, http.StatusNoContent)
+			return
+		}
+	}
+
+	
+	ctx.Error("User not found", http.StatusNotFound)
+}
+
+
+func (r *Router) handleTestAPI(ctx *APIContext) {
+	
+	response := map[string]interface{}{
+		"message":   "Hello from Go on Airplanes API route!",
+		"timestamp": time.Now().Format(time.RFC3339),
+		"method":    ctx.Request.Method,
+		"path":      ctx.Request.URL.Path,
+		"params":    ctx.Params,
+	}
+
+	
+	ctx.Success(response, http.StatusOK)
+}
+
 func (r *Router) AddStaticRoute() {
 	staticHandler := http.StripPrefix("/static/", http.FileServer(http.Dir(r.StaticDir)))
 	r.Routes = append(r.Routes, Route{
@@ -313,79 +538,6 @@ func (r *Router) createTemplateHandler(route string) http.HandlerFunc {
 	}
 }
 
-func (r *Router) loadAPIRoutes() (int, error) {
-	apiBasePath := filepath.Join(AppConfig.AppDir, "api")
-	apiRouteCount := 0
-
-	if _, err := os.Stat(apiBasePath); os.IsNotExist(err) {
-		return 0, nil
-	}
-
-	
-	usersPath := filepath.Join(apiBasePath, "users")
-	if _, err := os.Stat(usersPath); err == nil {
-		
-		r.Logger.InfoLog.Printf("Registering users API routes")
-
-		
-		r.API("/api/users-example", func(ctx *APIContext) {
-			users := []map[string]interface{}{
-				{"id": 1, "name": "Example User 1", "email": "user1@example.com"},
-				{"id": 2, "name": "Example User 2", "email": "user2@example.com"},
-				{"id": 3, "name": "Example User 3", "email": "user3@example.com"},
-			}
-
-			page, perPage := GetPaginationParams(ctx.Request, 10)
-			meta := NewPaginationMeta(page, perPage, len(users))
-
-			RenderPaginated(ctx.Writer, users, meta, http.StatusOK)
-		})
-
-		r.Logger.InfoLog.Printf("API route registered: %s", "/api/users-example")
-		apiRouteCount++
-	}
-
-	err := filepath.Walk(apiBasePath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if !info.IsDir() && filepath.Base(path) == "route.go" {
-			relPath, err := filepath.Rel(apiBasePath, filepath.Dir(path))
-			if err != nil {
-				return fmt.Errorf("failed to get relative path for %s: %w", path, err)
-			}
-
-			routePath := "/api/" + filepath.ToSlash(relPath)
-
-			r.Routes = append(r.Routes, Route{
-				Path: routePath,
-				Handler: func(w http.ResponseWriter, req *http.Request) {
-					if routePath == "/api/test" {
-						handleAPITest(w, req)
-					} else {
-						r.Logger.WarnLog.Printf("API route %s not implemented", routePath)
-						RenderError(w, "API route not implemented", http.StatusNotImplemented)
-					}
-				},
-				IsAPI:      true,
-				Middleware: NewMiddlewareChain(),
-			})
-
-			r.Logger.InfoLog.Printf("API route registered: %s", routePath)
-			apiRouteCount++
-		}
-
-		return nil
-	})
-
-	return apiRouteCount, err
-}
-
-func handleAPITest(w http.ResponseWriter, _ *http.Request) {
-	RenderSuccess(w, map[string]string{"message": "Hello from Go on Airplanes API route!"}, http.StatusOK)
-}
-
 func (r *Router) serveErrorPage(w http.ResponseWriter, req *http.Request, status int) {
 	var errorPage string
 
@@ -400,7 +552,6 @@ func (r *Router) serveErrorPage(w http.ResponseWriter, req *http.Request, status
 
 	customErrorPath := filepath.Join(AppConfig.AppDir, errorPage+".html")
 	if _, err := os.Stat(customErrorPath); err == nil {
-
 		ctx := &RouteContext{
 			Params: map[string]string{
 				"status": fmt.Sprintf("%d", status),

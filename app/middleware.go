@@ -6,7 +6,7 @@ import (
 )
 
 func ConfigureMiddleware(app *core.GonAirApp) {
-	// Initialize global middleware with logging
+	
 	app.Router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			app.Logger.InfoLog.Printf("🛡️ Global Middleware: Processing request for %s", r.URL.Path)
@@ -14,12 +14,12 @@ func ConfigureMiddleware(app *core.GonAirApp) {
 		})
 	})
 
-	// Add core middleware
+	
 	app.Router.Use(core.LoggingMiddleware(app.Logger))
 	app.Router.Use(core.RecoveryMiddleware(app.Logger))
 	app.Router.Use(core.SecureHeadersMiddleware())
 
-	// Configure CORS if enabled
+	
 	if app.Config.EnableCORS {
 		app.Router.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +30,7 @@ func ConfigureMiddleware(app *core.GonAirApp) {
 		app.Router.Use(core.CORSMiddleware(app.Config.AllowedOrigins))
 	}
 
-	// Configure rate limiting if enabled
+	
 	if app.Config.RateLimit > 0 {
 		app.Router.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +41,7 @@ func ConfigureMiddleware(app *core.GonAirApp) {
 		app.Router.Use(core.RateLimitMiddleware(app.Config.RateLimit))
 	}
 
-	// Example of route-specific middleware with logging
+	
 	app.Router.AddRoute("/dashboard", nil, func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			app.Logger.InfoLog.Printf("🔒 Auth Middleware: Checking access for %s", r.URL.Path)
@@ -52,7 +52,7 @@ func ConfigureMiddleware(app *core.GonAirApp) {
 		return true
 	}))
 
-	// Example of API route with middleware and logging
+	
 	app.Router.AddAPIRoute("/api/secure", nil,
 		func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
