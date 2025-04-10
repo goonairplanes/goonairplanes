@@ -73,32 +73,30 @@ function Update-ImportPaths {
     
     try {
         $goFiles = Get-ChildItem -Path $Directory -Filter "*.go" -Recurse
-        $count = 0
+        $totalCount = 0
         
         foreach ($file in $goFiles) {
             $content = Get-Content -Path $file.FullName -Raw
+            $originalContent = $content
             
-            if ($content -match "import.*`"$OldName") {
-                $updatedContent = $content -replace "`"$OldName", "`"$NewName"
-                Set-Content -Path $file.FullName -Value $updatedContent
-                $count++
-            }
+            $updatedContent = $content -replace "([`"'])$OldName(/[^`"']*)?([`"'])", "`$1$NewName`$2`$3"
             
-            if ($content -match "import.*`"$OldName/core") {
-                $updatedContent = $content -replace "`"$OldName/core", "`"$NewName/core"
+     
+            if ($updatedContent -ne $originalContent) {
                 Set-Content -Path $file.FullName -Value $updatedContent
-                $count++
+                $totalCount++
             }
         }
         
-        if ($count -gt 0) {
-            Write-Styled "Updated import paths in $count files" -Color $Theme.Success -Prefix "Config"
+        if ($totalCount -gt 0) {
+            Write-Styled "Updated import paths in $totalCount files" -Color $Theme.Success -Prefix "Config"
         } else {
             Write-Styled "No import paths needed updating" -Color $Theme.Info -Prefix "Config"
         }
     }
     catch {
         Write-Styled "Some import paths may not have been updated properly" -Color $Theme.Warning -Prefix "Config"
+        Write-Styled $_.Exception.Message -Color $Theme.Error -Prefix "Error"
     }
 }
 
