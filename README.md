@@ -266,6 +266,10 @@ Found a bug? Have an awesome idea? We're still in alpha and would love your help
 
 MIT Licensed – Fly wherever you want with this code ✈️
 
+> Fun fact: The GOA template renderer is named Marley — after the developer’s dog. <br>
+> Just like Marley, it’s loyal, fast, and makes everything feel like home. <br>
+> 🐶🚀🏠
+
 ---
 
 <div align="center">
