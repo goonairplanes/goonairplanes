@@ -18,12 +18,12 @@ type Config struct {
 	EnableCORS     bool
 	AllowedOrigins []string
 	RateLimit      int
-	
+
 	DefaultRenderMode string
 	SSGDir            string
 	SSGEnabled        bool
 	SSREnabled        bool
-	
+
 	DefaultMetaTags map[string]string
 }
 
@@ -39,18 +39,18 @@ var AppConfig = Config{
 	LayoutPath:     "app/layout.html",
 	ComponentDir:   "app/components",
 	AppName:        "Go on Airplanes",
-	Version:        "0.3.0",
+	Version:        "0.4.0",
 	LogLevel:       "info",
 	TemplateCache:  true,
 	EnableCORS:     false,
 	AllowedOrigins: []string{"*"},
 	RateLimit:      100,
-	
+
 	DefaultRenderMode: "ssr",
 	SSGDir:            "static/generated",
 	SSGEnabled:        true,
 	SSREnabled:        true,
-	
+
 	DefaultMetaTags: map[string]string{
 		"viewport":     "width=device-width, initial-scale=1.0",
 		"description":  "Go on Airplanes - A modern Go web framework",
