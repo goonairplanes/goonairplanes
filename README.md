@@ -32,8 +32,22 @@ I created this framework after one too many late nights wrestling with Next.js f
 
 ## Get Flying in 60 Seconds
 
+### Option 1: Quick Install
+
+#### Linux/macOS:
+```bash
+curl -fsSL https://raw.githubusercontent.com/kleeedolinux/goonairplanes/refs/heads/main/scripts/setup.sh | bash
+```
+
+#### Windows (PowerShell):
+```powershell
+irm https://raw.githubusercontent.com/kleeedolinux/goonairplanes/refs/heads/main/scripts/setup.ps1 | iex
+```
+
+### Option 2: Manual Setup
+
 1. **Grab the code**  
-   `git clone https://github.com/yourusername/goonairplanes.git && cd goonairplanes`
+   `git clone https://github.com/kleeedolinux/goonairplanes.git && cd goonairplanes`
 
 2. **Start the engine**  
    `go run main.go`
