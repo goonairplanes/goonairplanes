@@ -33,29 +33,78 @@ I created this framework after one too many late nights wrestling with Next.js f
 3. **Open your browser**  
    Visit `http://localhost:3000`
 
-That's it! You're now cruising at 30,000 feet of productivity.
-
-## How Your Project Looks
-
-Here's the lay of the land:
+## 📂 Project Structure
 
 ```
-your-project/
-├── app/               # All your HTML pages and components
-│   ├── about.html     # becomes /about
-│   └── blog/          # becomes /blog
-├── static/            # CSS, JS, images
-└── main.go            # Where the magic starts
+project/
+├── main.go                # Application entry point
+├── core/                  # Framework internals
+│   ├── app.go             # Application setup and lifecycle
+│   ├── config.go          # Configuration
+│   ├── marley.go          # Template rendering engine
+│   ├── router.go          # Request handling and routing
+│   └── watcher.go         # File watching for hot reload
+├── app/                   # Your application
+│   ├── layout.html        # Base layout template
+│   ├── index.html         # Homepage ("/")
+│   ├── about.html         # About page ("/about")
+│   ├── dashboard/         # Dashboard section
+│   │   └── index.html     # Dashboard homepage ("/dashboard")
+│   ├── user/[id]/         # Dynamic route with parameters
+│   │   └── index.html     # User profile page ("/user/123")
+│   ├── components/        # Reusable UI components
+│   │   ├── navbar.html    # Navigation component
+│   │   └── card.html      # Card component
+│   └── api/               # API endpoints
+│       └── users/         # Users API
+│           └── route.go   # Handler for "/api/users"
+├── static/                # Static assets
+│   ├── css/               # Stylesheets
+│   ├── js/                # JavaScript files
+│   └── images/            # Image assets
+└── go.mod                 # Go module definition
 ```
 
-**Pro Tip:** Create folders with `[dynamic]` names for URLs that change:  
-`app/user/[id]/profile.html` → `/user/123/profile`
+## 📑 Page Creation
 
-## Building Blocks Made Easy
+### Basic Pages
 
-### Components Are Your New Best Friends
+Create HTML files in the `app` directory to define routes:
 
-Create reusable pieces in `app/components/`:
+- `app/about.html` → `/about`
+- `app/contact.html` → `/contact`
+- `app/blog/index.html` → `/blog`
+- `app/blog/post.html` → `/blog/post`
+
+### Dynamic Routes
+
+Create folders with names in square brackets for dynamic segments:
+
+- `app/product/[id]/index.html` → `/product/123`, `/product/abc`
+- `app/blog/[category]/[slug].html` → `/blog/tech/go-web-dev`
+
+Access parameters in templates:
+```html
+<h1>Product: {{.Params.id}}</h1>
+```
+
+### Nested Routes
+
+Organize routes in subfolders for better structure:
+```
+app/
+├── dashboard/
+│   ├── index.html         # "/dashboard"
+│   ├── settings.html      # "/dashboard/settings"
+│   └── analytics/
+│       └── index.html     # "/dashboard/analytics"
+```
+
+## 🧩 Components & Templates
+
+### Creating Components
+
+Define reusable components in the `app/components` directory:
 
 ```html
 <!-- app/components/warning.html -->
@@ -143,6 +192,5 @@ MIT Licensed – Fly wherever you want with this code ✈️
 ---
 
 <div align="center">
-  <p>Built with ☕️ and ✈️ by Jklee</p>
-  <p>Ready for takeoff? Your next project awaits!</p>
-</div>
+  <p>Built with ❤️ by the Jklee</p>
+</div> 
