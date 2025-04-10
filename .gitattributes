@@ -1,6 +1,8 @@
 *.md linguist-documentation=true
 *.MD linguist-documentation=true
 *.markdown linguist-documentation=true
+*.ps1 linguist-documentation=true
+*.sh linguist-documentation=true
 
 *.go linguist-language=Go
 
