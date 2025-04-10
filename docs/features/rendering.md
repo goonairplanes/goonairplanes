@@ -1,38 +1,28 @@
 # 🖥️ Rendering Modes
 
-Go on Airplanes supports multiple rendering modes to optimize for different use cases.
+Go on Airplanes supports different rendering modes to optimize for various use cases.
 
-## Server-Side Rendering (SSR)
+## Default: Server-Side Rendering
 
-Server-Side Rendering (SSR) generates the full HTML on the server for each request.
+By default, Go on Airplanes uses standard server-side rendering for all pages. This means:
 
-### Benefits of SSR
+- Each page is rendered on the server using Go's html/template package
+- Templates are processed for every request
+- Content is always up-to-date
+- SEO-friendly by default since search engines see the full HTML
 
-- **SEO-friendly** - Search engines can easily index all content
-- **Always up-to-date** - Content is generated at request time
-- **Social media sharing** - Preview cards show the latest content
-- **First contentful paint** - Users see content faster initially
-
-### Using SSR
-
-To use SSR for a page, add the following comment to your HTML template:
-
-```html
-<!--render:ssr-->
-```
-
-SSR is the default rendering mode, so this tag is optional.
+This is the standard behavior built into the framework and requires no configuration. Just create your HTML templates and they'll be rendered on the server for each request.
 
 ## Static Site Generation (SSG)
 
-Static Site Generation (SSG) pre-renders pages at build time, serving static HTML files.
+For pages that don't need dynamic content on every request, you can use Static Site Generation (SSG). With SSG, pages are pre-rendered once and stored in memory for ultra-fast delivery.
 
 ### Benefits of SSG
 
 - **Performance** - Extremely fast page loads
 - **Reduced server load** - No processing on each request
-- **CDN compatibility** - Can be deployed to any CDN
-- **Lower hosting costs** - Less computational resources needed
+- **Perfect for static content** - Documentation, landing pages, etc.
+- **Memory-efficient** - Content is stored in memory with optional disk caching
 
 ### Using SSG
 
@@ -40,6 +30,12 @@ To use SSG for a page, add the following comment to your HTML template:
 
 ```html
 <!--render:ssg-->
+```
+
+You can also use the HTML comment style format:
+
+```html
+<!---render:ssg--->
 ```
 
 ## Page Metadata
@@ -56,18 +52,22 @@ Both rendering modes support enhanced metadata for SEO optimization:
 
 ## Configuration
 
-Rendering modes can be configured in your application config:
+SSG can be configured in your application config:
 
 ```go
-AppConfig.SSGEnabled = true        // Enable static site generation
-AppConfig.SSREnabled = true        // Enable server-side rendering
-AppConfig.DefaultRenderMode = "ssr" // Default rendering mode
-AppConfig.SSGDir = "static/generated" // Directory for generated static files
+// Enable static site generation (default: true)
+AppConfig.SSGEnabled = true
+
+// Directory for disk cache (optional)
+AppConfig.SSGDir = ".goa/cache"
+
+// Enable disk caching for SSG content
+AppConfig.SSGCacheEnabled = true
 ```
 
 ## Implementation Details
 
-- Static files are generated during application startup
-- The framework falls back to SSR if a static file isn't found
-- Meta tags are processed server-side for both rendering modes
+- SSG content is primarily stored in memory for fast access
+- Optional disk caching for persistence between restarts
+- If an SSG page doesn't have cached content, it falls back to standard server rendering
 - Different pages can use different rendering modes in the same application 

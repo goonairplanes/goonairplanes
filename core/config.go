@@ -22,7 +22,6 @@ type Config struct {
 	DefaultRenderMode string
 	SSGDir            string
 	SSGEnabled        bool
-	SSREnabled        bool
 	SSGCacheEnabled   bool
 
 	DefaultMetaTags map[string]string
@@ -50,7 +49,6 @@ var AppConfig = Config{
 	DefaultRenderMode: "ssr",
 	SSGDir:            "static/generated",
 	SSGEnabled:        true,
-	SSREnabled:        true,
 	SSGCacheEnabled:   true,
 
 	DefaultMetaTags: map[string]string{

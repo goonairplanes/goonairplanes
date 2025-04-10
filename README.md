@@ -165,49 +165,27 @@ Use them anywhere:
 
 ## 🖥️ Rendering Modes
 
-Go on Airplanes implements both Server-Side Rendering (SSR) and Static Site Generation (SSG) similar to Next.js but with a lightweight, faster approach:
+Go on Airplanes provides two approaches to rendering your pages:
 
-### Server-Side Rendering (SSR)
+### Default: Server-Side Rendering
 
-SSR generates the full HTML on the server for each request, providing:
-- **SEO-friendly content** for search engines
-- **Always up-to-date data** generated at request time
-- **Optimized social media sharing** with accurate preview cards
+By default, all pages are rendered on the server for each request:
+- **Always up-to-date content** generated at request time
+- **SEO-friendly** with full HTML for search engines
+- **No configuration needed** - just create your templates
 
-To use SSR (default mode):
-```html
-<!--render:ssr-->
-```
+This is the standard behavior - you don't need to do anything special to use it.
 
-### Static Site Generation (SSG)
+### Optional: Static Site Generation (SSG)
 
-SSG pre-renders pages at build time for ultra-fast delivery:
+For pages that don't change often, use SSG to pre-render and cache them in memory:
 - **Lightning-fast page loads** with pre-generated content
 - **Reduced server load** with no processing per request
-- **CDN-compatible** for global distribution
+- **Perfect for static content** like documentation or landing pages
 
-To use SSG:
+To use SSG, just add this comment to your HTML:
 ```html
 <!--render:ssg-->
-```
-
-### Asset Bundling
-
-Go on Airplanes includes production-ready asset bundling for optimized performance:
-
-- **Automatic CSS/JS combining** – All static assets bundled into single files
-- **Zero configuration needed** – Works out of the box in production mode
-- **Easy template integration** – Simple variables for bundle paths
-
-Enable bundling in your code:
-```go
-app.Marley.BundleMode = true
-```
-
-Use bundled assets in your layout:
-```html
-<link rel="stylesheet" href="{{index .Bundles "css"}}">
-<script src="{{index .Bundles "js"}}"></script>
 ```
 
 ### Enhanced Metadata
