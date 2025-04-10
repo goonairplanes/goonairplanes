@@ -197,7 +197,7 @@ function Setup-GoOnAirplanes {
     Push-Location $projectDir
     
     try {
-        $filesToRemove = @("img", "README.md", "MANIFEST.md", "CODE_OF_CONDUCT.md", "ROADMAP.md", "SECURITY.md")
+        $filesToRemove = @("img", "README.md", "MANIFEST.md", "BENCHMARK.MD", "CODE_OF_CONDUCT.md", "ROADMAP.md", "SECURITY.md")
         foreach ($file in $filesToRemove) {
             if (Test-Path $file) {
                 Remove-Item -Path $file -Recurse -Force

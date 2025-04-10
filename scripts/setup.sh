@@ -186,7 +186,7 @@ setup_goa() {
         return 1
     fi
     
-    rm -rf img README.md MANIFEST.md CODE_OF_CONDUCT.md ROADMAP.md SECURITY.md
+    rm -rf img README.md MANIFEST.md BENCHMARK.MD CODE_OF_CONDUCT.md ROADMAP.md SECURITY.md
     
     read -rp "Do you want to keep local documentation? (Y/n): " KEEP_DOCS
     if [ -z "$KEEP_DOCS" ] || [ "$KEEP_DOCS" = "n" ] || [ "$KEEP_DOCS" = "N" ]; then
