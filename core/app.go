@@ -45,9 +45,6 @@ func (app *GonAirApp) Init() error {
 
 	app.Logger.InfoLog.Printf("Initializing Go on Airplanes...")
 
-	
-	
-
 	err := app.Router.InitRoutes()
 	if err != nil {
 		app.Logger.ErrorLog.Printf("Failed to initialize routes: %v", err)
@@ -55,7 +52,6 @@ func (app *GonAirApp) Init() error {
 	}
 	app.Logger.InfoLog.Printf("Routes initialized successfully")
 
-	
 	configureMiddleware := app.getConfigureMiddlewareFunc()
 	if configureMiddleware != nil {
 		configureMiddleware(app)
@@ -85,21 +81,18 @@ func (app *GonAirApp) getConfigureMiddlewareFunc() func(*GonAirApp) {
 		return nil
 	}
 
-	
-	
-	
-
-	
-	
-
-	
 	return func(app *GonAirApp) {
-		
 		app.Router.Use(LoggingMiddleware(app.Logger))
 		app.Router.Use(RecoveryMiddleware(app.Logger))
 
 		if app.Config.EnableCORS {
 			app.Router.Use(CORSMiddleware(app.Config.AllowedOrigins))
+		}
+
+		
+		if app.Config.SSGEnabled {
+			app.Router.Use(SSGMiddleware(app.Logger))
+			app.Logger.InfoLog.Printf("SSG enabled, static files will be generated in %s", app.Config.SSGDir)
 		}
 	}
 }

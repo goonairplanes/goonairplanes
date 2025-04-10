@@ -3,6 +3,9 @@ package core
 import (
 	"context"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -143,6 +146,48 @@ func SecureHeadersMiddleware() MiddlewareFunc {
 			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("X-XSS-Protection", "1; mode=block")
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+
+func SSGMiddleware(logger *AppLogger) MiddlewareFunc {
+	
+	if AppConfig.SSGEnabled {
+		
+		if !strings.HasPrefix(AppConfig.SSGDir, AppConfig.StaticDir) {
+			logger.WarnLog.Printf("SSG directory should be under the static directory. Current configuration: %s, Static: %s",
+				AppConfig.SSGDir, AppConfig.StaticDir)
+
+			
+			AppConfig.SSGDir = filepath.Join(AppConfig.StaticDir, "generated")
+			logger.InfoLog.Printf("Auto-corrected SSG directory to: %s", AppConfig.SSGDir)
+		}
+
+		
+		if err := os.MkdirAll(AppConfig.SSGDir, 0755); err != nil {
+			logger.ErrorLog.Printf("Failed to create SSG directory: %v", err)
+		} else {
+			logger.InfoLog.Printf("SSG directory created/verified at: %s", AppConfig.SSGDir)
+
+			
+			staticGenPath := filepath.Join(AppConfig.StaticDir, "generated")
+			if AppConfig.SSGDir != staticGenPath {
+				if err := os.MkdirAll(staticGenPath, 0755); err != nil {
+					logger.ErrorLog.Printf("Failed to create static generated directory: %v", err)
+				}
+
+				
+				if AppConfig.SSGDir != staticGenPath {
+					logger.InfoLog.Printf("Ensuring SSG directory is accessible via static route")
+				}
+			}
+		}
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, r)
 		})
 	}

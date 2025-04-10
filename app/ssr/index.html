@@ -1,0 +1,34 @@
+
+
+
+
+
+
+
+{{define "content"}}
+<div class="bg-white shadow-md rounded-lg p-6">
+    <h2 class="text-2xl font-bold mb-4">Server-Side Rendering Example</h2>
+    
+    <div class="mb-6">
+        <p class="text-gray-700">
+            This page is rendered on the server for each request. Server-side rendering ensures that search engines 
+            and social media crawlers always see the latest content.
+        </p>
+    </div>
+    
+    <div class="bg-blue-100 p-4 rounded-md">
+        <h3 class="font-bold text-blue-700">Current Time (Server)</h3>
+        <p class="text-blue-600">{{.ServerTime}}</p>
+    </div>
+    
+    <div class="mt-6">
+        <h3 class="font-bold mb-2">Benefits of SSR:</h3>
+        <ul class="list-disc pl-6">
+            <li>Better SEO as search engines see the full content</li>
+            <li>Faster initial page load for users</li>
+            <li>Works well with social media preview cards</li>
+            <li>Dynamic content is always up-to-date</li>
+        </ul>
+    </div>
+</div>
+{{end}} 

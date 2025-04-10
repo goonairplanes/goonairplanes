@@ -6,16 +6,30 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 )
+
+var metaTagRegex = regexp.MustCompile(`<!--meta:([a-zA-Z0-9_:]+)-->`)
+var renderModeRegex = regexp.MustCompile(`<!--render:([a-zA-Z]+)-->`)
+var titleRegex = regexp.MustCompile(`<!--title:([^-]+)-->`)
+var descRegex = regexp.MustCompile(`<!--description:([^-]+)-->`)
+
+type PageMetadata struct {
+	Title       string
+	Description string
+	MetaTags    map[string]string
+	RenderMode  string
+}
 
 type Marley struct {
 	Templates       map[string]*template.Template
 	Components      map[string]*template.Template
 	LayoutTemplate  *template.Template
 	ComponentsCache map[string]string
+	PageMetadata    map[string]*PageMetadata
 	mutex           sync.RWMutex
 	cacheExpiry     time.Time
 	cacheTTL        time.Duration
@@ -27,6 +41,7 @@ func NewMarley(logger *AppLogger) *Marley {
 		Templates:       make(map[string]*template.Template),
 		Components:      make(map[string]*template.Template),
 		ComponentsCache: make(map[string]string),
+		PageMetadata:    make(map[string]*PageMetadata),
 		cacheTTL:        5 * time.Minute,
 		Logger:          logger,
 	}
@@ -121,10 +136,44 @@ func (m *Marley) LoadTemplates() error {
 		return err
 	}
 
+	
 	templates := make(map[string]*template.Template)
+	pageMetadata := make(map[string]*PageMetadata)
+
+	
+	templateCh := make(chan struct {
+		path     string
+		tmpl     *template.Template
+		metadata *PageMetadata
+	}, len(templatePaths))
+
 	semaphore := make(chan struct{}, 4)
 	errCh := make(chan error, len(templatePaths))
 
+	
+	var collectorWg sync.WaitGroup
+	collectorWg.Add(1)
+
+	
+	go func() {
+		defer collectorWg.Done()
+		for i := 0; i < len(templatePaths); i++ {
+			result := <-templateCh
+			templates[result.path] = result.tmpl
+			pageMetadata[result.path] = result.metadata
+
+			
+			if AppConfig.SSGEnabled && result.metadata.RenderMode == "ssg" {
+				if err := m.generateStaticFile(result.path, result.tmpl, result.metadata); err != nil {
+					m.Logger.WarnLog.Printf("Failed to generate static file for %s: %v", result.path, err)
+				} else {
+					m.Logger.InfoLog.Printf("Generated static file for %s", result.path)
+				}
+			}
+		}
+	}()
+
+	
 	for _, path := range templatePaths {
 		wg.Add(1)
 		go func(p string) {
@@ -140,6 +189,12 @@ func (m *Marley) LoadTemplates() error {
 				errCh <- fmt.Errorf("failed to read template %s: %w", p, err)
 				return
 			}
+
+			
+			metadata := extractPageMetadata(string(pageContent), routePath)
+
+			
+			processedContent := processPageContent(string(pageContent), metadata)
 
 			tmpl := template.New("layout")
 
@@ -157,22 +212,32 @@ func (m *Marley) LoadTemplates() error {
 				}
 			}
 
-			_, err = tmpl.New("page").Parse(string(pageContent))
+			_, err = tmpl.New("page").Parse(processedContent)
 			if err != nil {
 				errCh <- fmt.Errorf("failed to parse template %s: %w", p, err)
 				return
 			}
 
-			mu.Lock()
-			templates[routePath] = tmpl
-			mu.Unlock()
+			
+			templateCh <- struct {
+				path     string
+				tmpl     *template.Template
+				metadata *PageMetadata
+			}{routePath, tmpl, metadata}
 
-			m.Logger.InfoLog.Printf("Template loaded: %s → %s", p, routePath)
+			m.Logger.InfoLog.Printf("Template loaded: %s → %s (mode: %s)", p, routePath, metadata.RenderMode)
 		}(path)
 	}
 
+	
 	wg.Wait()
 	close(errCh)
+
+	
+	close(templateCh)
+
+	
+	collectorWg.Wait()
 
 	for err := range errCh {
 		if err != nil {
@@ -182,6 +247,7 @@ func (m *Marley) LoadTemplates() error {
 	}
 
 	m.Templates = templates
+	m.PageMetadata = pageMetadata
 
 	if AppConfig.TemplateCache {
 		m.cacheExpiry = now.Add(m.cacheTTL)
@@ -190,6 +256,115 @@ func (m *Marley) LoadTemplates() error {
 	elapsedTime := time.Since(startTime)
 	m.Logger.InfoLog.Printf("Templates loaded successfully in %v", elapsedTime.Round(time.Millisecond))
 
+	return nil
+}
+
+func extractPageMetadata(content, _ string) *PageMetadata {
+	metadata := &PageMetadata{
+		Title:       "Go on Airplanes",
+		Description: AppConfig.DefaultMetaTags["description"],
+		MetaTags:    make(map[string]string),
+		RenderMode:  AppConfig.DefaultRenderMode,
+	}
+
+	
+	for k, v := range AppConfig.DefaultMetaTags {
+		metadata.MetaTags[k] = v
+	}
+
+	
+	titleMatch := titleRegex.FindStringSubmatch(content)
+	if len(titleMatch) > 1 {
+		metadata.Title = strings.TrimSpace(titleMatch[1])
+		metadata.MetaTags["og:title"] = metadata.Title
+	}
+
+	
+	descMatch := descRegex.FindStringSubmatch(content)
+	if len(descMatch) > 1 {
+		metadata.Description = strings.TrimSpace(descMatch[1])
+		metadata.MetaTags["description"] = metadata.Description
+		metadata.MetaTags["og:description"] = metadata.Description
+	}
+
+	
+	metaMatches := metaTagRegex.FindAllStringSubmatch(content, -1)
+	for _, match := range metaMatches {
+		if len(match) > 1 {
+			parts := strings.SplitN(match[1], ":", 2)
+			if len(parts) == 2 {
+				key := parts[0]
+				value := parts[1]
+				metadata.MetaTags[key] = value
+			}
+		}
+	}
+
+	
+	renderMatch := renderModeRegex.FindStringSubmatch(content)
+	if len(renderMatch) > 1 {
+		mode := strings.ToLower(renderMatch[1])
+		if mode == "ssr" || mode == "ssg" {
+			metadata.RenderMode = mode
+		}
+	}
+
+	return metadata
+}
+
+func processPageContent(content string, _ *PageMetadata) string {
+	
+	content = titleRegex.ReplaceAllString(content, "")
+	content = descRegex.ReplaceAllString(content, "")
+	content = metaTagRegex.ReplaceAllString(content, "")
+	content = renderModeRegex.ReplaceAllString(content, "")
+
+	return content
+}
+
+func (m *Marley) generateStaticFile(routePath string, tmpl *template.Template, metadata *PageMetadata) error {
+	if !AppConfig.SSGEnabled {
+		return nil
+	}
+
+	
+	relativePath := strings.TrimPrefix(routePath, "/")
+	if routePath == "/" {
+		relativePath = "index"
+	}
+
+	
+	staticDir := AppConfig.SSGDir
+	fullPath := filepath.Join(staticDir, relativePath+".html")
+
+	
+	dirPath := filepath.Dir(fullPath)
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
+		return fmt.Errorf("failed to create directory for static file: %w", err)
+	}
+
+	m.Logger.InfoLog.Printf("Generating static file at: %s", fullPath)
+
+	
+	file, err := os.Create(fullPath)
+	if err != nil {
+		return fmt.Errorf("failed to create static file: %w", err)
+	}
+	defer file.Close()
+
+	
+	data := map[string]interface{}{
+		"Metadata":  metadata,
+		"Config":    &AppConfig,
+		"BuildTime": time.Now().Format(time.RFC1123),
+	}
+
+	err = tmpl.ExecuteTemplate(file, "layout", data)
+	if err != nil {
+		return fmt.Errorf("failed to render template to static file: %w", err)
+	}
+
+	m.Logger.InfoLog.Printf("Successfully generated static file: %s", fullPath)
 	return nil
 }
 
@@ -257,10 +432,52 @@ func getRoutePathFromFile(fullPath, basePath string) string {
 func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interface{}) error {
 	m.mutex.RLock()
 	tmpl, exists := m.Templates[route]
+	metadata, metadataExists := m.PageMetadata[route]
 	m.mutex.RUnlock()
 
 	if !exists {
 		return fmt.Errorf("template for route %s not found", route)
+	}
+
+	
+	if AppConfig.SSGEnabled && metadataExists && metadata.RenderMode == "ssg" {
+		staticPath := route
+		if staticPath == "/" {
+			staticPath = "/index"
+		}
+
+		
+		ssgFilePath := filepath.Join(AppConfig.SSGDir, strings.TrimPrefix(staticPath, "/")) + ".html"
+		if _, err := os.Stat(ssgFilePath); err == nil {
+			
+			w.Header().Set("Location", "/static/generated"+staticPath+".html")
+			w.WriteHeader(http.StatusTemporaryRedirect)
+			return nil
+		} else {
+			m.Logger.WarnLog.Printf("Static file for route %s not found, falling back to SSR", route)
+		}
+	}
+
+	
+	if metadataExists {
+		
+		var combinedData map[string]interface{}
+
+		
+		if existingData, ok := data.(map[string]interface{}); ok {
+			combinedData = existingData
+			combinedData["Metadata"] = metadata
+			combinedData["Config"] = &AppConfig
+		} else {
+			
+			combinedData = map[string]interface{}{
+				"Data":     data,
+				"Metadata": metadata,
+				"Config":   &AppConfig,
+			}
+		}
+
+		return tmpl.ExecuteTemplate(w, "layout", combinedData)
 	}
 
 	return tmpl.ExecuteTemplate(w, "layout", data)

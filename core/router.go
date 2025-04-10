@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -30,6 +31,7 @@ type Router struct {
 	StaticDir        string
 	Logger           *AppLogger
 	GlobalMiddleware *MiddlewareChain
+	mutex            sync.RWMutex
 }
 
 type RouteContext struct {
@@ -270,36 +272,34 @@ func (r *Router) loadAPIRoutes() (int, error) {
 		return 0, nil
 	}
 
-	
 	usersPath := filepath.Join(apiBasePath, "users")
 	if _, err := os.Stat(usersPath); err == nil {
-		
+
 		r.API("/api/users", func(ctx *APIContext) {
-			
+
 			switch ctx.Request.Method {
 			case http.MethodGet:
-				
+
 				r.handleUsersGet(ctx)
 			case http.MethodPost:
-				
+
 				r.handleUsersPost(ctx)
 			default:
 				ctx.Error("Method not allowed", http.StatusMethodNotAllowed)
 			}
 		})
 
-		
 		r.API("/api/users/[id]", func(ctx *APIContext) {
-			
+
 			switch ctx.Request.Method {
 			case http.MethodGet:
-				
+
 				r.handleUserGetById(ctx)
 			case http.MethodPut:
-				
+
 				r.handleUserPutById(ctx)
 			case http.MethodDelete:
-				
+
 				r.handleUserDeleteById(ctx)
 			default:
 				ctx.Error("Method not allowed", http.StatusMethodNotAllowed)
@@ -307,15 +307,14 @@ func (r *Router) loadAPIRoutes() (int, error) {
 		})
 
 		r.Logger.InfoLog.Printf("API route registered: %s", "/api/users")
-		apiRouteCount += 2 
+		apiRouteCount += 2
 	}
 
-	
 	testPath := filepath.Join(apiBasePath, "test")
 	if _, err := os.Stat(testPath); err == nil {
-		
+
 		r.API("/api/test", func(ctx *APIContext) {
-			
+
 			r.handleTestAPI(ctx)
 		})
 
@@ -326,25 +325,22 @@ func (r *Router) loadAPIRoutes() (int, error) {
 	return apiRouteCount, nil
 }
 
-
 var users = []map[string]interface{}{
 	{"id": 1, "name": "John Doe", "email": "john@example.com", "username": "johndoe"},
 	{"id": 2, "name": "Jane Smith", "email": "jane@example.com", "username": "janesmith"},
 	{"id": 3, "name": "Bob Johnson", "email": "bob@example.com", "username": "bobjohnson"},
 }
 
-
 func (r *Router) handleUsersGet(ctx *APIContext) {
-	
+
 	page, perPage := GetPaginationParams(ctx.Request, 10)
 
-	
 	totalItems := len(users)
 	startIndex := (page - 1) * perPage
 	endIndex := startIndex + perPage
 
 	if startIndex >= totalItems {
-		
+
 		meta := NewPaginationMeta(page, perPage, totalItems)
 		RenderPaginated(ctx.Writer, []map[string]interface{}{}, meta, http.StatusOK)
 		return
@@ -354,44 +350,35 @@ func (r *Router) handleUsersGet(ctx *APIContext) {
 		endIndex = totalItems
 	}
 
-	
 	pagedUsers := users[startIndex:endIndex]
 
-	
 	meta := NewPaginationMeta(page, perPage, totalItems)
 
-	
 	RenderPaginated(ctx.Writer, pagedUsers, meta, http.StatusOK)
 }
 
-
 func (r *Router) handleUsersPost(ctx *APIContext) {
-	
+
 	var newUser map[string]interface{}
 	if err := ParseBody(ctx.Request, &newUser); err != nil {
 		ctx.Error("Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	
 	if newUser["name"] == nil || newUser["email"] == nil || newUser["username"] == nil {
 		ctx.Error("Name, email and username are required", http.StatusBadRequest)
 		return
 	}
 
-	
 	newUser["id"] = len(users) + 1
 
-	
 	users = append(users, newUser)
 
-	
 	ctx.Success(newUser, http.StatusCreated)
 }
 
-
 func (r *Router) handleUserGetById(ctx *APIContext) {
-	
+
 	idStr := ctx.Params["id"]
 	id := 0
 	if idStr != "" {
@@ -403,7 +390,6 @@ func (r *Router) handleUserGetById(ctx *APIContext) {
 		return
 	}
 
-	
 	for _, user := range users {
 		if userId, ok := user["id"].(int); ok && userId == id {
 			ctx.Success(user, http.StatusOK)
@@ -411,13 +397,11 @@ func (r *Router) handleUserGetById(ctx *APIContext) {
 		}
 	}
 
-	
 	ctx.Error("User not found", http.StatusNotFound)
 }
 
-
 func (r *Router) handleUserPutById(ctx *APIContext) {
-	
+
 	idStr := ctx.Params["id"]
 	id := 0
 	if idStr != "" {
@@ -429,35 +413,29 @@ func (r *Router) handleUserPutById(ctx *APIContext) {
 		return
 	}
 
-	
 	var updatedUser map[string]interface{}
 	if err := ParseBody(ctx.Request, &updatedUser); err != nil {
 		ctx.Error("Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	
 	for i, user := range users {
 		if userId, ok := user["id"].(int); ok && userId == id {
-			
+
 			updatedUser["id"] = id
 
-			
 			users[i] = updatedUser
 
-			
 			ctx.Success(updatedUser, http.StatusOK)
 			return
 		}
 	}
 
-	
 	ctx.Error("User not found", http.StatusNotFound)
 }
 
-
 func (r *Router) handleUserDeleteById(ctx *APIContext) {
-	
+
 	idStr := ctx.Params["id"]
 	id := 0
 	if idStr != "" {
@@ -469,25 +447,21 @@ func (r *Router) handleUserDeleteById(ctx *APIContext) {
 		return
 	}
 
-	
 	for i, user := range users {
 		if userId, ok := user["id"].(int); ok && userId == id {
-			
+
 			users = append(users[:i], users[i+1:]...)
 
-			
 			ctx.Success(nil, http.StatusNoContent)
 			return
 		}
 	}
 
-	
 	ctx.Error("User not found", http.StatusNotFound)
 }
 
-
 func (r *Router) handleTestAPI(ctx *APIContext) {
-	
+
 	response := map[string]interface{}{
 		"message":   "Hello from Go on Airplanes API route!",
 		"timestamp": time.Now().Format(time.RFC3339),
@@ -496,7 +470,6 @@ func (r *Router) handleTestAPI(ctx *APIContext) {
 		"params":    ctx.Params,
 	}
 
-	
 	ctx.Success(response, http.StatusOK)
 }
 
@@ -519,12 +492,17 @@ func (r *Router) createTemplateHandler(route string) http.HandlerFunc {
 		startTime := time.Now()
 
 		params := extractParamsFromRequest(req.URL.Path, route)
-		ctx := &RouteContext{
-			Params: params,
-			Config: &AppConfig,
+
+		
+		data := map[string]interface{}{
+			"Params":     params,
+			"Config":     &AppConfig,
+			"ServerTime": time.Now().Format(time.RFC1123),
+			"BuildTime":  time.Now().Format(time.RFC1123),
+			"Route":      route,
 		}
 
-		err := r.Marley.RenderTemplate(w, route, ctx)
+		err := r.Marley.RenderTemplate(w, route, data)
 		if err != nil {
 			r.Logger.ErrorLog.Printf("Template rendering error for %s: %v", route, err)
 			r.serveErrorPage(w, req, http.StatusInternalServerError)
