@@ -10,6 +10,8 @@
 
 Go on Airplanes is a lightweight, high-performance fullstack web framework for Go with HTML file-based routing. It's designed for simplicity, speed, and a great developer experience.
 
+I created Go on Airplanes 'cause I got tired of writing a whole damn colossus in Next.js just to build a simple CRUD.
+
 > ✨ Zero configuration to start. Soar through development with ease.
 
 ## ✈️ Key Features
