@@ -8,6 +8,8 @@
   </p>
 </div>
 
+> ⚠️ **ALPHA RELEASE WARNING**: Go on Airplanes is currently in alpha stage with active development. You may encounter bugs and incomplete features. We'd love your contributions to enhance GOA's core functionality - please report issues or submit PRs to help us improve!
+
 ## Documentation
 
 * [Manifest](https://github.com/kleeedolinux/goonairplanes/blob/main/MANIFEST.md) - Why this project exists
