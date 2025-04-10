@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -44,12 +45,22 @@ func (app *GonAirApp) Init() error {
 
 	app.Logger.InfoLog.Printf("Initializing Go on Airplanes...")
 
+	
+	
+
 	err := app.Router.InitRoutes()
 	if err != nil {
 		app.Logger.ErrorLog.Printf("Failed to initialize routes: %v", err)
 		return fmt.Errorf("failed to initialize routes: %w", err)
 	}
 	app.Logger.InfoLog.Printf("Routes initialized successfully")
+
+	
+	configureMiddleware := app.getConfigureMiddlewareFunc()
+	if configureMiddleware != nil {
+		configureMiddleware(app)
+		app.Logger.InfoLog.Printf("Middleware configured successfully")
+	}
 
 	if app.Config.DevMode && app.Config.LiveReload {
 		watcher, err := NewFileWatcher(app.Router, app.Logger)
@@ -65,6 +76,32 @@ func (app *GonAirApp) Init() error {
 	app.Logger.InfoLog.Printf("Go on Airplanes initialized in %v", elapsedTime.Round(time.Millisecond))
 
 	return nil
+}
+
+func (app *GonAirApp) getConfigureMiddlewareFunc() func(*GonAirApp) {
+	middlewareConfigPath := filepath.Join(app.Config.AppDir, "middleware.go")
+	if _, err := os.Stat(middlewareConfigPath); os.IsNotExist(err) {
+		app.Logger.WarnLog.Printf("Middleware configuration file not found at %s", middlewareConfigPath)
+		return nil
+	}
+
+	
+	
+	
+
+	
+	
+
+	
+	return func(app *GonAirApp) {
+		
+		app.Router.Use(LoggingMiddleware(app.Logger))
+		app.Router.Use(RecoveryMiddleware(app.Logger))
+
+		if app.Config.EnableCORS {
+			app.Router.Use(CORSMiddleware(app.Config.AllowedOrigins))
+		}
+	}
 }
 
 func (app *GonAirApp) Start() error {

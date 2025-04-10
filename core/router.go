@@ -20,13 +20,15 @@ type Route struct {
 	IsAPI      bool
 	IsParam    bool
 	Pattern    *regexp.Regexp
+	Middleware *MiddlewareChain
 }
 
 type Router struct {
-	Routes    []Route
-	Marley    *Marley
-	StaticDir string
-	Logger    *AppLogger
+	Routes           []Route
+	Marley           *Marley
+	StaticDir        string
+	Logger           *AppLogger
+	GlobalMiddleware *MiddlewareChain
 }
 
 type RouteContext struct {
@@ -40,11 +42,146 @@ type APIHandler interface {
 
 func NewRouter(logger *AppLogger) *Router {
 	return &Router{
-		Routes:    []Route{},
-		Marley:    NewMarley(logger),
-		StaticDir: AppConfig.StaticDir,
-		Logger:    logger,
+		Routes:           []Route{},
+		Marley:           NewMarley(logger),
+		StaticDir:        AppConfig.StaticDir,
+		Logger:           logger,
+		GlobalMiddleware: NewMiddlewareChain(),
 	}
+}
+
+func (r *Router) Use(middleware MiddlewareFunc) {
+	r.GlobalMiddleware.Use(middleware)
+}
+
+func (r *Router) AddRoute(path string, handler http.HandlerFunc, middleware ...MiddlewareFunc) {
+	mc := NewMiddlewareChain()
+	for _, m := range middleware {
+		mc.Use(m)
+	}
+
+	paramNames := r.extractParamNames(path)
+	isParam := len(paramNames) > 0
+
+	var pattern *regexp.Regexp
+	if isParam {
+		patternStr := "^" + paramRegex.ReplaceAllString(path, "([^/]+)") + "$"
+		pattern = regexp.MustCompile(patternStr)
+	}
+
+	r.Routes = append(r.Routes, Route{
+		Path:       path,
+		Handler:    handler,
+		ParamNames: paramNames,
+		IsStatic:   false,
+		IsAPI:      false,
+		IsParam:    isParam,
+		Pattern:    pattern,
+		Middleware: mc,
+	})
+}
+
+func (r *Router) AddAPIRoute(path string, handler http.HandlerFunc, middleware ...MiddlewareFunc) {
+	mc := NewMiddlewareChain()
+	for _, m := range middleware {
+		mc.Use(m)
+	}
+
+	r.Routes = append(r.Routes, Route{
+		Path:       path,
+		Handler:    handler,
+		IsAPI:      true,
+		Middleware: mc,
+	})
+}
+
+func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if AppConfig.LogLevel != "error" {
+		r.Logger.InfoLog.Printf("%s %s", req.Method, req.URL.Path)
+	}
+
+	path := normalizePath(req.URL.Path)
+
+	
+	if r.GlobalMiddleware == nil {
+		r.GlobalMiddleware = NewMiddlewareChain()
+	}
+
+	
+	if strings.HasPrefix(path, "/static") {
+		for _, route := range r.Routes {
+			if route.IsStatic {
+				
+				if route.Middleware == nil {
+					route.Middleware = NewMiddlewareChain()
+				}
+
+				handler := r.GlobalMiddleware.Then(http.HandlerFunc(route.Handler))
+				handler.ServeHTTP(w, req)
+				return
+			}
+		}
+	}
+
+	
+	if strings.HasPrefix(path, "/api") {
+		for _, route := range r.Routes {
+			if route.IsAPI {
+				apiPath := route.Path
+				if path == apiPath || strings.HasPrefix(path, apiPath+"/") {
+					
+					if route.Middleware == nil {
+						route.Middleware = NewMiddlewareChain()
+					}
+
+					handler := r.GlobalMiddleware.Then(route.Middleware.Then(http.HandlerFunc(route.Handler)))
+					handler.ServeHTTP(w, req)
+					return
+				}
+			}
+		}
+
+		r.Logger.WarnLog.Printf("API route not found: %s", path)
+		http.Error(w, "API endpoint not found", http.StatusNotFound)
+		return
+	}
+
+	
+	for _, route := range r.Routes {
+		if !route.IsParam && !route.IsStatic && !route.IsAPI {
+			routePath := route.Path
+			if path == routePath {
+				
+				if route.Middleware == nil {
+					route.Middleware = NewMiddlewareChain()
+				}
+
+				handler := r.GlobalMiddleware.Then(route.Middleware.Then(http.HandlerFunc(route.Handler)))
+				handler.ServeHTTP(w, req)
+				return
+			}
+		}
+	}
+
+	
+	for _, route := range r.Routes {
+		if route.IsParam && route.Pattern != nil {
+			if route.Pattern.MatchString(path) {
+				
+				if route.Middleware == nil {
+					route.Middleware = NewMiddlewareChain()
+				}
+
+				handler := r.GlobalMiddleware.Then(route.Middleware.Then(http.HandlerFunc(route.Handler)))
+				handler.ServeHTTP(w, req)
+				return
+			}
+		}
+	}
+
+	
+	r.Logger.WarnLog.Printf("Route not found: %s", path)
+	r.serveErrorPage(w, req, http.StatusNotFound)
 }
 
 func (r *Router) InitRoutes() error {
@@ -80,6 +217,7 @@ func (r *Router) InitRoutes() error {
 			IsAPI:      false,
 			IsParam:    isParam,
 			Pattern:    pattern,
+			Middleware: NewMiddlewareChain(),
 		})
 
 		r.Logger.InfoLog.Printf("Route registered: %s (params: %v)", routePath, paramNames)
@@ -106,7 +244,8 @@ func (r *Router) AddStaticRoute() {
 		Handler: func(w http.ResponseWriter, req *http.Request) {
 			staticHandler.ServeHTTP(w, req)
 		},
-		IsStatic: true,
+		IsStatic:   true,
+		Middleware: NewMiddlewareChain(),
 	})
 
 	r.Logger.InfoLog.Printf("Static route registered: /static/ → %s", r.StaticDir)
@@ -167,7 +306,8 @@ func (r *Router) loadAPIRoutes() (int, error) {
 						http.Error(w, "API route not implemented", http.StatusNotImplemented)
 					}
 				},
-				IsAPI: true,
+				IsAPI:      true,
+				Middleware: NewMiddlewareChain(),
 			})
 
 			r.Logger.InfoLog.Printf("API route registered: %s", routePath)
@@ -185,67 +325,6 @@ func handleAPITest(w http.ResponseWriter, _ *http.Request) {
 	w.Write([]byte(`{"message":"Hello from Go on Airplanes API route!"}`))
 }
 
-func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if AppConfig.LogLevel != "error" {
-		r.Logger.InfoLog.Printf("%s %s", req.Method, req.URL.Path)
-	}
-
-	path := normalizePath(req.URL.Path)
-
-	// Serve static assets first
-	if strings.HasPrefix(path, "/static") {
-		for _, route := range r.Routes {
-			if route.IsStatic {
-				route.Handler(w, req)
-				return
-			}
-		}
-	}
-
-	// Handle API routes
-	if strings.HasPrefix(path, "/api") {
-		for _, route := range r.Routes {
-			if route.IsAPI {
-				apiPath := route.Path
-				if path == apiPath || strings.HasPrefix(path, apiPath+"/") {
-					route.Handler(w, req)
-					return
-				}
-			}
-		}
-
-		// API route not found
-		r.Logger.WarnLog.Printf("API route not found: %s", path)
-		http.Error(w, "API endpoint not found", http.StatusNotFound)
-		return
-	}
-
-	// Handle exact path matches for regular routes
-	for _, route := range r.Routes {
-		if !route.IsParam && !route.IsStatic && !route.IsAPI {
-			routePath := route.Path
-			if path == routePath {
-				route.Handler(w, req)
-				return
-			}
-		}
-	}
-
-	// Handle dynamic routes with parameters
-	for _, route := range r.Routes {
-		if route.IsParam && route.Pattern != nil {
-			if route.Pattern.MatchString(path) {
-				route.Handler(w, req)
-				return
-			}
-		}
-	}
-
-	// No route found
-	r.Logger.WarnLog.Printf("Route not found: %s", path)
-	r.serveErrorPage(w, req, http.StatusNotFound)
-}
-
 func (r *Router) serveErrorPage(w http.ResponseWriter, req *http.Request, status int) {
 	var errorPage string
 
@@ -258,10 +337,10 @@ func (r *Router) serveErrorPage(w http.ResponseWriter, req *http.Request, status
 		errorPage = "error"
 	}
 
-	// Check if custom error page exists
+	
 	customErrorPath := filepath.Join(AppConfig.AppDir, errorPage+".html")
 	if _, err := os.Stat(customErrorPath); err == nil {
-		// Custom error page exists, try to render it
+		
 		ctx := &RouteContext{
 			Params: map[string]string{
 				"status": fmt.Sprintf("%d", status),
@@ -278,7 +357,7 @@ func (r *Router) serveErrorPage(w http.ResponseWriter, req *http.Request, status
 		}
 	}
 
-	// Fallback to standard error
+	
 	http.Error(w, http.StatusText(status), status)
 }
 
