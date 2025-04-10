@@ -40,7 +40,7 @@ type APIHandler interface {
 	Handler(w http.ResponseWriter, r *http.Request)
 }
 
-// New type for API context with helper methods
+
 type APIContext struct {
 	Request *http.Request
 	Writer  http.ResponseWriter
@@ -48,22 +48,22 @@ type APIContext struct {
 	Config  *Config
 }
 
-// Success renders a successful JSON response
+
 func (ctx *APIContext) Success(data interface{}, statusCode int) {
 	RenderSuccess(ctx.Writer, data, statusCode)
 }
 
-// Error renders an error JSON response
+
 func (ctx *APIContext) Error(message string, statusCode int) {
 	RenderError(ctx.Writer, message, statusCode)
 }
 
-// ParseBody parses the request body into the provided interface
+
 func (ctx *APIContext) ParseBody(v interface{}) error {
 	return ParseBody(ctx.Request, v)
 }
 
-// Params gets the query parameters as a map
+
 func (ctx *APIContext) QueryParams() map[string]interface{} {
 	return ParseJSONParams(ctx.Request)
 }
@@ -123,7 +123,7 @@ func (r *Router) AddAPIRoute(path string, handler http.HandlerFunc, middleware .
 	})
 }
 
-// New wrapper to simplify API route handlers
+
 func (r *Router) API(path string, handler func(*APIContext), middleware ...MiddlewareFunc) {
 	wrappedHandler := func(w http.ResponseWriter, req *http.Request) {
 		params := extractParamsFromRequest(req.URL.Path, path)
@@ -321,13 +321,13 @@ func (r *Router) loadAPIRoutes() (int, error) {
 		return 0, nil
 	}
 
-	// Special case for users API route
+	
 	usersPath := filepath.Join(apiBasePath, "users")
 	if _, err := os.Stat(usersPath); err == nil {
-		// Import the package dynamically when it exists
+		
 		r.Logger.InfoLog.Printf("Registering users API routes")
 
-		// Add example API for demonstration
+		
 		r.API("/api/users-example", func(ctx *APIContext) {
 			users := []map[string]interface{}{
 				{"id": 1, "name": "Example User 1", "email": "user1@example.com"},

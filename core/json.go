@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// ResponseData is a generic struct for API responses
+
 type ResponseData struct {
 	Success bool        `json:"success"`
 	Data    interface{} `json:"data,omitempty"`
@@ -17,7 +17,7 @@ type ResponseData struct {
 	Meta    interface{} `json:"meta,omitempty"`
 }
 
-// PaginationMeta contains pagination information
+
 type PaginationMeta struct {
 	CurrentPage int  `json:"current_page"`
 	PerPage     int  `json:"per_page"`
@@ -27,7 +27,7 @@ type PaginationMeta struct {
 	HasPrevPage bool `json:"has_prev_page"`
 }
 
-// NewPaginationMeta creates a new pagination metadata object
+
 func NewPaginationMeta(currentPage, perPage, totalItems int) PaginationMeta {
 	totalPages := int(math.Ceil(float64(totalItems) / float64(perPage)))
 
@@ -41,7 +41,7 @@ func NewPaginationMeta(currentPage, perPage, totalItems int) PaginationMeta {
 	}
 }
 
-// GetPaginationParams extracts pagination parameters from request
+
 func GetPaginationParams(r *http.Request, defaultPerPage int) (page, perPage int) {
 	pageStr := r.URL.Query().Get("page")
 	perPageStr := r.URL.Query().Get("per_page")
@@ -64,7 +64,7 @@ func GetPaginationParams(r *http.Request, defaultPerPage int) (page, perPage int
 	return page, perPage
 }
 
-// RenderJSON marshals data to JSON and writes it to the response writer
+
 func RenderJSON(w http.ResponseWriter, data interface{}, statusCode int) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
@@ -72,7 +72,7 @@ func RenderJSON(w http.ResponseWriter, data interface{}, statusCode int) error {
 	return json.NewEncoder(w).Encode(data)
 }
 
-// RenderSuccess is a convenience function to render a successful JSON response
+
 func RenderSuccess(w http.ResponseWriter, data interface{}, statusCode int) error {
 	if statusCode == 0 {
 		statusCode = http.StatusOK
@@ -86,7 +86,7 @@ func RenderSuccess(w http.ResponseWriter, data interface{}, statusCode int) erro
 	return RenderJSON(w, response, statusCode)
 }
 
-// RenderError is a convenience function to render an error JSON response
+
 func RenderError(w http.ResponseWriter, errMessage string, statusCode int) error {
 	if statusCode == 0 {
 		statusCode = http.StatusInternalServerError
@@ -100,7 +100,7 @@ func RenderError(w http.ResponseWriter, errMessage string, statusCode int) error
 	return RenderJSON(w, response, statusCode)
 }
 
-// RenderPaginated creates a paginated JSON response
+
 func RenderPaginated(w http.ResponseWriter, data interface{}, meta PaginationMeta, statusCode int) error {
 	if statusCode == 0 {
 		statusCode = http.StatusOK
@@ -115,7 +115,7 @@ func RenderPaginated(w http.ResponseWriter, data interface{}, meta PaginationMet
 	return RenderJSON(w, response, statusCode)
 }
 
-// ParseBody parses the request body into the provided interface
+
 func ParseBody(r *http.Request, v interface{}) error {
 	if r.Body == nil {
 		return errors.New("request body is empty")
@@ -135,7 +135,7 @@ func ParseBody(r *http.Request, v interface{}) error {
 	return json.Unmarshal(body, v)
 }
 
-// ParseJSONParams parses URL query params into a map
+
 func ParseJSONParams(r *http.Request) map[string]interface{} {
 	params := make(map[string]interface{})
 
@@ -151,7 +151,7 @@ func ParseJSONParams(r *http.Request) map[string]interface{} {
 	return params
 }
 
-// GetParam extracts a parameter from the request by name, with type conversion
+
 func GetParam(r *http.Request, name string, defaultValue string) string {
 	value := r.URL.Query().Get(name)
 	if value == "" {
@@ -160,7 +160,7 @@ func GetParam(r *http.Request, name string, defaultValue string) string {
 	return value
 }
 
-// GetParamInt extracts an integer parameter from the request by name
+
 func GetParamInt(r *http.Request, name string, defaultValue int) int {
 	strValue := r.URL.Query().Get(name)
 	if strValue == "" {
@@ -175,7 +175,7 @@ func GetParamInt(r *http.Request, name string, defaultValue int) int {
 	return value
 }
 
-// GetParamBool extracts a boolean parameter from the request by name
+
 func GetParamBool(r *http.Request, name string, defaultValue bool) bool {
 	strValue := r.URL.Query().Get(name)
 	if strValue == "" {
@@ -190,13 +190,13 @@ func GetParamBool(r *http.Request, name string, defaultValue bool) bool {
 	return value
 }
 
-// IsJSONRequest checks if the request content type is JSON
+
 func IsJSONRequest(r *http.Request) bool {
 	contentType := r.Header.Get("Content-Type")
 	return contentType == "application/json" || contentType == "application/json; charset=utf-8"
 }
 
-// APIResponse creates a standard API response
+
 func APIResponse(success bool, data interface{}, errMessage string) ResponseData {
 	return ResponseData{
 		Success: success,
@@ -205,7 +205,7 @@ func APIResponse(success bool, data interface{}, errMessage string) ResponseData
 	}
 }
 
-// WithMeta adds metadata to the response
+
 func (r ResponseData) WithMeta(meta interface{}) ResponseData {
 	r.Meta = meta
 	return r
