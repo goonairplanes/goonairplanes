@@ -8,8 +8,6 @@
   </p>
 </div>
 
-[Why Go on Airplanes exists?](https://github.com/kleeedolinux/goonairplanes/blob/main/MANIFEST.md)
-
 ## Documentation
 
 * [Manifest](https://github.com/kleeedolinux/goonairplanes/blob/main/MANIFEST.md) - Why this project exists
