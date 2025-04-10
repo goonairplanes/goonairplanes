@@ -211,16 +211,6 @@ setup_goa() {
     
     log_step "Updating project configuration..."
     
-    if [ -f "go.mod" ]; then
-        if ! sed -i.bak "s|module goonairplanes|module $PROJECT_NAME|g" go.mod && rm -f go.mod.bak; then
-            log_warning "Failed to update module name in go.mod"
-        else
-            log_success "Updated module name in go.mod"
-        fi
-        
-        update_import_paths "goonairplanes" "$PROJECT_NAME" "."
-    fi
-    
     log_step "Installing dependencies..."
     if ! go mod tidy; then
         log_error "Failed to run go mod tidy"

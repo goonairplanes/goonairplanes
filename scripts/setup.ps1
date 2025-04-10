@@ -239,16 +239,6 @@ function Setup-GoOnAirplanes {
     
     Write-Styled "Updating project configuration..." -Color $Theme.Primary -Prefix "Config"
     
-    $goModPath = Join-Path $projectDir "go.mod"
-    if (Test-Path $goModPath) {
-        $goMod = Get-Content $goModPath -Raw
-        $goMod = $goMod -replace "module goonairplanes", "module $projectName"
-        Set-Content -Path $goModPath -Value $goMod
-        Write-Styled "Updated module name in go.mod" -Color $Theme.Success -Prefix "Config"
-        
-        Update-ImportPaths -OldName "goonairplanes" -NewName $projectName -Directory $projectDir
-    }
-    
     Write-Styled "Installing dependencies..." -Color $Theme.Primary -Prefix "Go"
     try {
         go mod tidy
