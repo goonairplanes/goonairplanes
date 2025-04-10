@@ -68,6 +68,12 @@ func (fw *FileWatcher) watchLoop() {
 				}
 				fw.debounceTimer = time.AfterFunc(debounceTimeout, func() {
 					fw.logger.InfoLog.Printf("File change detected in %s, reloading...", event.Name)
+
+					if fw.router.Marley != nil {
+						fw.router.Marley.InvalidateCache()
+						fw.logger.InfoLog.Printf("Template cache invalidated")
+					}
+
 					err := fw.router.InitRoutes()
 					if err != nil {
 						fw.logger.ErrorLog.Printf("Failed to reload templates: %v", err)
