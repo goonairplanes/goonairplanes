@@ -23,6 +23,7 @@ type Config struct {
 	SSGDir            string
 	SSGEnabled        bool
 	SSREnabled        bool
+	SSGCacheEnabled   bool
 
 	DefaultMetaTags map[string]string
 }
@@ -50,6 +51,7 @@ var AppConfig = Config{
 	SSGDir:            "static/generated",
 	SSGEnabled:        true,
 	SSREnabled:        true,
+	SSGCacheEnabled:   true,
 
 	DefaultMetaTags: map[string]string{
 		"viewport":     "width=device-width, initial-scale=1.0",

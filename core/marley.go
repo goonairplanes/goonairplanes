@@ -12,10 +12,16 @@ import (
 	"time"
 )
 
-var metaTagRegex = regexp.MustCompile(`<!--meta:([a-zA-Z0-9_:]+)-->`)
+var metaTagRegex = regexp.MustCompile(`<!--meta:([a-zA-Z0-9_:,\-\s]+)-->`)
 var renderModeRegex = regexp.MustCompile(`<!--render:([a-zA-Z]+)-->`)
 var titleRegex = regexp.MustCompile(`<!--title:([^-]+)-->`)
 var descRegex = regexp.MustCompile(`<!--description:([^-]+)-->`)
+
+
+var htmlCommentMetaTagRegex = regexp.MustCompile(`<!---meta:([a-zA-Z0-9_:,\-\s]+)(?:-->|--->)`)
+var htmlCommentRenderModeRegex = regexp.MustCompile(`<!---render:([a-zA-Z]+)(?:-->|--->)`)
+var htmlCommentTitleRegex = regexp.MustCompile(`<!---title:([^-]+)(?:-->|--->)`)
+var htmlCommentDescRegex = regexp.MustCompile(`<!---description:([^-]+)(?:-->|--->)`)
 
 type PageMetadata struct {
 	Title       string
@@ -30,12 +36,16 @@ type Marley struct {
 	LayoutTemplate  *template.Template
 	ComponentsCache map[string]string
 	PageMetadata    map[string]*PageMetadata
+	LayoutMetadata  *PageMetadata
 	mutex           sync.RWMutex
 	cacheExpiry     time.Time
 	cacheTTL        time.Duration
 	Logger          *AppLogger
 	BundledAssets   map[string]string
 	BundleMode      bool
+	
+	SSGCache    map[string]string
+	SSGCacheDir string
 }
 
 func NewMarley(logger *AppLogger) *Marley {
@@ -44,10 +54,13 @@ func NewMarley(logger *AppLogger) *Marley {
 		Components:      make(map[string]*template.Template),
 		ComponentsCache: make(map[string]string),
 		PageMetadata:    make(map[string]*PageMetadata),
+		LayoutMetadata:  nil,
 		cacheTTL:        5 * time.Minute,
 		Logger:          logger,
 		BundledAssets:   make(map[string]string),
 		BundleMode:      false,
+		SSGCache:        make(map[string]string),
+		SSGCacheDir:     ".goa/cache",
 	}
 }
 
@@ -112,6 +125,10 @@ func (m *Marley) LoadTemplates() error {
 		return err
 	case layoutContent = <-layoutCh:
 		m.Logger.InfoLog.Printf("Layout template loaded successfully")
+
+		
+		m.LayoutMetadata = extractPageMetadata(string(layoutContent), "layout")
+		m.Logger.InfoLog.Printf("Layout metadata extracted: %s", m.LayoutMetadata.Title)
 	}
 
 	var (
@@ -262,6 +279,7 @@ func (m *Marley) LoadTemplates() error {
 }
 
 func extractPageMetadata(content, _ string) *PageMetadata {
+	
 	metadata := &PageMetadata{
 		Title:       "Go on Airplanes",
 		Description: AppConfig.DefaultMetaTags["description"],
@@ -269,40 +287,110 @@ func extractPageMetadata(content, _ string) *PageMetadata {
 		RenderMode:  AppConfig.DefaultRenderMode,
 	}
 
+	
 	for k, v := range AppConfig.DefaultMetaTags {
 		metadata.MetaTags[k] = v
 	}
 
-	titleMatch := titleRegex.FindStringSubmatch(content)
-	if len(titleMatch) > 1 {
-		metadata.Title = strings.TrimSpace(titleMatch[1])
-		metadata.MetaTags["og:title"] = metadata.Title
+	
+	foundTitle := false
+	foundDesc := false
+	foundRenderMode := false
+
+	
+	htmlTitleMatch := htmlCommentTitleRegex.FindStringSubmatch(content)
+	if len(htmlTitleMatch) > 1 {
+		titleText := strings.TrimSpace(htmlTitleMatch[1])
+		
+		titleText = strings.TrimSuffix(titleText, "-")
+		titleText = strings.TrimSpace(titleText)
+		metadata.Title = titleText
+		metadata.MetaTags["og:title"] = titleText
+		foundTitle = true
 	}
 
-	descMatch := descRegex.FindStringSubmatch(content)
-	if len(descMatch) > 1 {
-		metadata.Description = strings.TrimSpace(descMatch[1])
-		metadata.MetaTags["description"] = metadata.Description
-		metadata.MetaTags["og:description"] = metadata.Description
+	htmlDescMatch := htmlCommentDescRegex.FindStringSubmatch(content)
+	if len(htmlDescMatch) > 1 {
+		descText := strings.TrimSpace(htmlDescMatch[1])
+		
+		descText = strings.TrimSuffix(descText, "-")
+		descText = strings.TrimSpace(descText)
+		metadata.Description = descText
+		metadata.MetaTags["description"] = descText
+		metadata.MetaTags["og:description"] = descText
+		foundDesc = true
 	}
 
-	metaMatches := metaTagRegex.FindAllStringSubmatch(content, -1)
-	for _, match := range metaMatches {
+	htmlMetaMatches := htmlCommentMetaTagRegex.FindAllStringSubmatch(content, -1)
+	for _, match := range htmlMetaMatches {
 		if len(match) > 1 {
-			parts := strings.SplitN(match[1], ":", 2)
+			metaText := strings.TrimSpace(match[1])
+			
+			metaText = strings.TrimSuffix(metaText, "-")
+			metaText = strings.TrimSpace(metaText)
+			parts := strings.SplitN(metaText, ":", 2)
 			if len(parts) == 2 {
-				key := parts[0]
-				value := parts[1]
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
 				metadata.MetaTags[key] = value
 			}
 		}
 	}
 
-	renderMatch := renderModeRegex.FindStringSubmatch(content)
-	if len(renderMatch) > 1 {
-		mode := strings.ToLower(renderMatch[1])
+	htmlRenderMatch := htmlCommentRenderModeRegex.FindStringSubmatch(content)
+	if len(htmlRenderMatch) > 1 {
+		renderText := strings.TrimSpace(htmlRenderMatch[1])
+		
+		renderText = strings.TrimSuffix(renderText, "-")
+		renderText = strings.TrimSpace(renderText)
+		mode := strings.ToLower(renderText)
 		if mode == "ssr" || mode == "ssg" {
 			metadata.RenderMode = mode
+			foundRenderMode = true
+		}
+	}
+
+	
+	if !foundTitle {
+		titleMatch := titleRegex.FindStringSubmatch(content)
+		if len(titleMatch) > 1 {
+			metadata.Title = strings.TrimSpace(titleMatch[1])
+			metadata.MetaTags["og:title"] = metadata.Title
+		}
+	}
+
+	if !foundDesc {
+		descMatch := descRegex.FindStringSubmatch(content)
+		if len(descMatch) > 1 {
+			metadata.Description = strings.TrimSpace(descMatch[1])
+			metadata.MetaTags["description"] = metadata.Description
+			metadata.MetaTags["og:description"] = metadata.Description
+		}
+	}
+
+	
+	metaMatches := metaTagRegex.FindAllStringSubmatch(content, -1)
+	for _, match := range metaMatches {
+		if len(match) > 1 {
+			parts := strings.SplitN(match[1], ":", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
+				
+				if _, exists := metadata.MetaTags[key]; !exists {
+					metadata.MetaTags[key] = value
+				}
+			}
+		}
+	}
+
+	if !foundRenderMode {
+		renderMatch := renderModeRegex.FindStringSubmatch(content)
+		if len(renderMatch) > 1 {
+			mode := strings.ToLower(renderMatch[1])
+			if mode == "ssr" || mode == "ssg" {
+				metadata.RenderMode = mode
+			}
 		}
 	}
 
@@ -310,53 +398,106 @@ func extractPageMetadata(content, _ string) *PageMetadata {
 }
 
 func processPageContent(content string, _ *PageMetadata) string {
+	
+	contentBefore := len(content)
 
+	
+	
 	content = titleRegex.ReplaceAllString(content, "")
 	content = descRegex.ReplaceAllString(content, "")
 	content = metaTagRegex.ReplaceAllString(content, "")
 	content = renderModeRegex.ReplaceAllString(content, "")
 
+	
+	content = htmlCommentTitleRegex.ReplaceAllString(content, "")
+	content = htmlCommentDescRegex.ReplaceAllString(content, "")
+	content = htmlCommentMetaTagRegex.ReplaceAllString(content, "")
+	content = htmlCommentRenderModeRegex.ReplaceAllString(content, "")
+
+	
+	content = strings.TrimLeft(content, "\r\n")
+
+	contentAfter := len(content)
+	bytesRemoved := contentBefore - contentAfter
+
+	if bytesRemoved > 0 {
+		
+	}
+
 	return content
 }
+
+
 
 func (m *Marley) generateStaticFile(routePath string, tmpl *template.Template, metadata *PageMetadata) error {
 	if !AppConfig.SSGEnabled {
 		return nil
 	}
 
+	
+	finalMetadata := m.mergeMetadata(routePath, metadata)
+
 	relativePath := strings.TrimPrefix(routePath, "/")
 	if routePath == "/" {
 		relativePath = "index"
 	}
 
-	staticDir := AppConfig.SSGDir
-	fullPath := filepath.Join(staticDir, relativePath+".html")
+	
+	var buffer strings.Builder
 
-	dirPath := filepath.Dir(fullPath)
-	if err := os.MkdirAll(dirPath, 0755); err != nil {
-		return fmt.Errorf("failed to create directory for static file: %w", err)
+	
+	now := time.Now()
+	templateData := map[string]interface{}{
+		"Metadata":    finalMetadata,
+		"Config":      &AppConfig,
+		"BuildTime":   now.Format(time.RFC1123),
+		"ServerTime":  now.Format(time.RFC1123),
+		"CurrentTime": now,
+		"Route":       routePath,
 	}
 
-	m.Logger.InfoLog.Printf("Generating static file at: %s", fullPath)
+	
+	if m.BundleMode {
+		templateData["Bundles"] = m.BundledAssets
+	}
 
-	file, err := os.Create(fullPath)
+	
+	err := tmpl.ExecuteTemplate(&buffer, "layout", templateData)
 	if err != nil {
-		return fmt.Errorf("failed to create static file: %w", err)
-	}
-	defer file.Close()
-
-	data := map[string]interface{}{
-		"Metadata":  metadata,
-		"Config":    &AppConfig,
-		"BuildTime": time.Now().Format(time.RFC1123),
+		return fmt.Errorf("failed to render template to memory: %w", err)
 	}
 
-	err = tmpl.ExecuteTemplate(file, "layout", data)
-	if err != nil {
-		return fmt.Errorf("failed to render template to static file: %w", err)
+	
+	content := buffer.String()
+
+	
+	
+	
+	
+	m.SSGCache[routePath] = content
+
+	
+	if AppConfig.SSGCacheEnabled {
+		cacheDir := m.SSGCacheDir
+		fullPath := filepath.Join(cacheDir, relativePath+".html")
+
+		dirPath := filepath.Dir(fullPath)
+		if err := os.MkdirAll(dirPath, 0755); err != nil {
+			m.Logger.WarnLog.Printf("Failed to create cache directory: %v", err)
+			return nil 
+		}
+
+		err = os.WriteFile(fullPath, []byte(content), 0644)
+		if err != nil {
+			m.Logger.WarnLog.Printf("Failed to write to cache file: %v", err)
+			
+		} else {
+			m.Logger.InfoLog.Printf("Cached SSG content to disk: %s", fullPath)
+		}
 	}
 
-	m.Logger.InfoLog.Printf("Successfully generated static file: %s", fullPath)
+	m.Logger.InfoLog.Printf("Generated in-memory SSG content for: %s (mode: %s, size: %d bytes)",
+		routePath, finalMetadata.RenderMode, buffer.Len())
 	return nil
 }
 
@@ -477,55 +618,191 @@ func (m *Marley) bundleAssets() error {
 	return nil
 }
 
+func (m *Marley) mergeMetadata(routePath string, pageMetadata *PageMetadata) *PageMetadata {
+	
+	result := &PageMetadata{
+		Title:       "Go on Airplanes",                        
+		Description: AppConfig.DefaultMetaTags["description"], 
+		MetaTags:    make(map[string]string),
+		RenderMode:  AppConfig.DefaultRenderMode, 
+	}
+
+	
+	for k, v := range AppConfig.DefaultMetaTags {
+		
+		if k != "description" && k != "og:description" && k != "og:title" {
+			result.MetaTags[k] = v
+		}
+	}
+
+	
+	if m.LayoutMetadata != nil {
+		
+		if m.LayoutMetadata.Title != "Go on Airplanes" {
+			result.Title = m.LayoutMetadata.Title
+		}
+
+		
+		if m.LayoutMetadata.Description != AppConfig.DefaultMetaTags["description"] {
+			result.Description = m.LayoutMetadata.Description
+		}
+
+		
+		for k, v := range m.LayoutMetadata.MetaTags {
+			if k != "description" && k != "og:description" && k != "og:title" {
+				result.MetaTags[k] = v
+			}
+		}
+
+		
+		if m.LayoutMetadata.RenderMode != AppConfig.DefaultRenderMode {
+			result.RenderMode = m.LayoutMetadata.RenderMode
+		}
+	}
+
+	
+	
+	if pageMetadata.Title != "Go on Airplanes" {
+		result.Title = pageMetadata.Title
+	}
+
+	
+	if pageMetadata.Description != AppConfig.DefaultMetaTags["description"] {
+		result.Description = pageMetadata.Description
+	}
+
+	
+	for k, v := range pageMetadata.MetaTags {
+		if k != "description" && k != "og:description" && k != "og:title" {
+			result.MetaTags[k] = v
+		}
+	}
+
+	
+	if pageMetadata.RenderMode != AppConfig.DefaultRenderMode {
+		result.RenderMode = pageMetadata.RenderMode
+	}
+
+	
+	
+	result.MetaTags["og:title"] = result.Title
+
+	
+	if result.Description != "" {
+		result.MetaTags["description"] = result.Description
+		result.MetaTags["og:description"] = result.Description
+	}
+
+	m.Logger.InfoLog.Printf("Merged metadata for %s: Title='%s', Description='%s...', Mode='%s'",
+		routePath,
+		result.Title,
+		truncateString(result.Description, 30),
+		result.RenderMode)
+
+	return result
+}
+
+
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
+}
+
+
+
 func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interface{}) error {
 	m.mutex.RLock()
 	tmpl, exists := m.Templates[route]
 	metadata, metadataExists := m.PageMetadata[route]
+
+	
+	cachedContent, hasCachedContent := m.SSGCache[route]
 	m.mutex.RUnlock()
 
 	if !exists {
 		return fmt.Errorf("template for route %s not found", route)
 	}
 
-	if AppConfig.SSGEnabled && metadataExists && metadata.RenderMode == "ssg" {
-		staticPath := route
-		if staticPath == "/" {
-			staticPath = "/index"
-		}
-
-		ssgFilePath := filepath.Join(AppConfig.SSGDir, strings.TrimPrefix(staticPath, "/")) + ".html"
-		if _, err := os.Stat(ssgFilePath); err == nil {
-			w.Header().Set("Location", "/static/generated"+staticPath+".html")
-			w.WriteHeader(http.StatusTemporaryRedirect)
-			return nil
-		} else {
-			m.Logger.WarnLog.Printf("Static file for route %s not found, falling back to SSR", route)
-		}
-	}
-
+	var finalMetadata *PageMetadata
 	if metadataExists {
-		var combinedData map[string]interface{}
-
-		if existingData, ok := data.(map[string]interface{}); ok {
-			combinedData = existingData
-			combinedData["Metadata"] = metadata
-			combinedData["Config"] = &AppConfig
+		
+		finalMetadata = m.mergeMetadata(route, metadata)
+	} else {
+		
+		if m.LayoutMetadata != nil {
+			finalMetadata = m.LayoutMetadata
 		} else {
-			combinedData = map[string]interface{}{
-				"Data":     data,
-				"Metadata": metadata,
-				"Config":   &AppConfig,
+			
+			finalMetadata = &PageMetadata{
+				Title:       "Go on Airplanes",
+				Description: AppConfig.DefaultMetaTags["description"],
+				MetaTags:    AppConfig.DefaultMetaTags,
+				RenderMode:  AppConfig.DefaultRenderMode,
 			}
 		}
-
-		if m.BundleMode {
-			combinedData["Bundles"] = m.BundledAssets
-		}
-
-		return tmpl.ExecuteTemplate(w, "layout", combinedData)
 	}
 
-	return tmpl.ExecuteTemplate(w, "layout", data)
+	
+	if AppConfig.SSGEnabled && finalMetadata.RenderMode == "ssg" {
+		if hasCachedContent {
+			
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write([]byte(cachedContent))
+			m.Logger.InfoLog.Printf("Served SSG content from memory cache: %s", route)
+			return nil
+		} else {
+			
+			
+			if err := m.generateStaticFile(route, tmpl, metadata); err != nil {
+				m.Logger.WarnLog.Printf("Failed to generate SSG content for %s: %v", route, err)
+				
+			} else {
+				
+				m.mutex.RLock()
+				cachedContent, hasCachedContent = m.SSGCache[route]
+				m.mutex.RUnlock()
+
+				if hasCachedContent {
+					w.Header().Set("Content-Type", "text/html; charset=utf-8")
+					w.Write([]byte(cachedContent))
+					m.Logger.InfoLog.Printf("Served freshly generated SSG content: %s", route)
+					return nil
+				}
+			}
+		}
+	}
+
+	
+	now := time.Now()
+	templateData := map[string]interface{}{
+		"Metadata":    finalMetadata,
+		"Config":      &AppConfig,
+		"ServerTime":  now.Format(time.RFC1123),
+		"CurrentTime": now,
+		"Route":       route,
+	}
+
+	
+	if m.BundleMode {
+		templateData["Bundles"] = m.BundledAssets
+	}
+
+	
+	if existingData, ok := data.(map[string]interface{}); ok {
+		for k, v := range existingData {
+			templateData[k] = v
+		}
+	} else if data != nil {
+		templateData["Data"] = data
+	}
+
+	
+	m.Logger.InfoLog.Printf("Rendering template %s with mode: %s, title: %s",
+		route, finalMetadata.RenderMode, finalMetadata.Title)
+
+	return tmpl.ExecuteTemplate(w, "layout", templateData)
 }
 
 func (m *Marley) SetCacheTTL(duration time.Duration) {
@@ -540,5 +817,7 @@ func (m *Marley) InvalidateCache() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.cacheExpiry = time.Time{}
-	m.Logger.InfoLog.Printf("Template cache invalidated")
+	
+	m.SSGCache = make(map[string]string)
+	m.Logger.InfoLog.Printf("Template and SSG cache invalidated")
 }
