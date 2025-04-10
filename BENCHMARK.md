@@ -37,3 +37,4 @@ Whether you're rendering 10k static pages, handling real-time APIs, or streaming
 GOA proves you don’t need a spaceship to win the performance race. Sometimes, all you need is a framework built like a **precision engine**. ✈️  
 
 👉 Ready to ditch the bloat? [Get started with GOA](https://github.com/kleeedolinux/goonairplanes/) – and fly past the competition.
+> Why fight Node.js’s boss-level complexity when you can just... GO(A)?
