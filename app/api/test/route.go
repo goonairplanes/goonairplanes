@@ -1,4 +1,3 @@
-
 package api
 
 import (
@@ -7,10 +6,8 @@ import (
 	"time"
 )
 
-
-
 func Handler(ctx *core.APIContext) {
-	
+
 	response := map[string]interface{}{
 		"message":   "Hello from Go on Airplanes API route!",
 		"timestamp": time.Now().Format(time.RFC3339),
@@ -20,6 +17,5 @@ func Handler(ctx *core.APIContext) {
 		"success":   true,
 	}
 
-	
 	ctx.Success(response, http.StatusOK)
 }

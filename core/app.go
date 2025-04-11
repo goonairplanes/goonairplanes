@@ -128,12 +128,12 @@ func (app *GonAirApp) Start() error {
 
 func (app *GonAirApp) printBanner(port string) {
 	banner := `
-   ██████╗  ██████╗   
-  ██╔════╝ ██╔═══██╗  
-  ██║  ███╗██║   ██║    
-  ██║   ██║██║   ██║   
-  ╚██████╔╝╚██████╔╝    
-   ╚═════╝  ╚═════╝      
+	██████╗  ██████╗   
+	██╔════╝ ██╔═══██╗  
+	██║  ███╗██║   ██║    
+	██║   ██║██║   ██║   
+	╚██████╔╝╚██████╔╝    
+	╚═════╝  ╚═════╝      
 `
 	fmt.Print(banner)
 	app.Logger.InfoLog.Printf("Go on Airplanes ready for takeoff!")
