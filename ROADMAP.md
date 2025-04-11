@@ -18,10 +18,12 @@
 > The current API system gets the job done — until things get even slightly complex. That’s why it’s getting a much-needed upgrade. But don’t worry:
 > we’re not selling out.
 > 
-> Still simple as hell.
+> We just need of:
 >
-> Just better route grouping, parameter validation.
+> - Still simple as hell.
 >
-> More type safety.
+> - Just better route grouping, parameter validation.
+>
+> - More type safety.
 >
 > Same GOA. Same zero-bullshit philosophy. Just a little less painful to use..
