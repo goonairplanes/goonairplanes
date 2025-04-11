@@ -4,6 +4,9 @@ import (
 	"flag"
 	"goonairplanes/core"
 	"log"
+
+	_ "goonairplanes/app/api/test"
+	_ "goonairplanes/app/api/users"
 )
 
 func main() {

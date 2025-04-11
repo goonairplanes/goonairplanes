@@ -6,7 +6,7 @@ import (
 )
 
 func ConfigureMiddleware(app *core.GonAirApp) {
-	
+
 	app.Router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			app.Logger.InfoLog.Printf("🛡️ Global Middleware: Processing request for %s", r.URL.Path)
@@ -14,12 +14,10 @@ func ConfigureMiddleware(app *core.GonAirApp) {
 		})
 	})
 
-	
 	app.Router.Use(core.LoggingMiddleware(app.Logger))
 	app.Router.Use(core.RecoveryMiddleware(app.Logger))
 	app.Router.Use(core.SecureHeadersMiddleware())
 
-	
 	if app.Config.EnableCORS {
 		app.Router.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +28,6 @@ func ConfigureMiddleware(app *core.GonAirApp) {
 		app.Router.Use(core.CORSMiddleware(app.Config.AllowedOrigins))
 	}
 
-	
 	if app.Config.RateLimit > 0 {
 		app.Router.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +38,6 @@ func ConfigureMiddleware(app *core.GonAirApp) {
 		app.Router.Use(core.RateLimitMiddleware(app.Config.RateLimit))
 	}
 
-	
 	app.Router.AddRoute("/dashboard", nil, func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			app.Logger.InfoLog.Printf("🔒 Auth Middleware: Checking access for %s", r.URL.Path)
@@ -52,20 +48,24 @@ func ConfigureMiddleware(app *core.GonAirApp) {
 		return true
 	}))
 
-	
-	app.Router.AddAPIRoute("/api/secure", nil,
-		func(next http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				app.Logger.InfoLog.Printf("🔒 API Auth Middleware: Checking access for %s", r.URL.Path)
-				next.ServeHTTP(w, r)
-			})
-		},
-		core.AuthMiddleware(func(token string) bool {
-			app.Logger.InfoLog.Printf("🔑 Token validation for API access")
-			return true
-		}),
-		core.RateLimitMiddleware(10),
-	)
+	// Removed the AddAPIRoute call for /api/secure as API routes are registered
+	// via init() in their respective packages. Middleware for specific API
+	// routes should be applied by wrapping the handler during registration.
+	/*
+		app.Router.AddAPIRoute("/api/secure", nil,
+			func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					app.Logger.InfoLog.Printf("🔒 API Auth Middleware: Checking access for %s", r.URL.Path)
+					next.ServeHTTP(w, r)
+				})
+			},
+			core.AuthMiddleware(func(token string) bool {
+				app.Logger.InfoLog.Printf("🔑 Token validation for API access")
+				return true
+			}),
+			core.RateLimitMiddleware(10),
+		)
+	*/
 
 	app.Logger.InfoLog.Printf("✅ Middleware configuration completed")
 }
