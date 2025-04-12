@@ -4,7 +4,7 @@ go 1.24.2
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/kleeedolinux/socket.go v0.0.0-20250412153756-cd25e893ffcc
+	github.com/kleeedolinux/socket.go v0.2.0
 )
 
 require (

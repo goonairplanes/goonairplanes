@@ -19,6 +19,7 @@ type Config struct {
 	EnableCORS     bool
 	AllowedOrigins []string
 	RateLimit      int
+	IsBuiltSystem  bool
 
 	InMemoryJS     bool
 	JSLibraryCache map[string]string
@@ -50,6 +51,7 @@ var AppConfig = Config{
 	EnableCORS:     false,
 	AllowedOrigins: []string{"*"},
 	RateLimit:      100,
+	IsBuiltSystem:  false,
 
 	InMemoryJS:     true,
 	JSLibraryCache: make(map[string]string),

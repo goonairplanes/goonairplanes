@@ -20,9 +20,19 @@ type FileWatcher struct {
 	dirs          []string
 	logger        *AppLogger
 	socketServer  *socket.Server
+	enabled       bool
 }
 
 func NewFileWatcher(router *Router, logger *AppLogger) (*FileWatcher, error) {
+	if AppConfig.IsBuiltSystem {
+		logger.InfoLog.Printf("File watcher disabled: running on built system")
+		return &FileWatcher{
+			router:  router,
+			logger:  logger,
+			enabled: false,
+		}, nil
+	}
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create file watcher: %w", err)
@@ -30,16 +40,15 @@ func NewFileWatcher(router *Router, logger *AppLogger) (*FileWatcher, error) {
 
 	var socketServer *socket.Server
 	if AppConfig.DevMode {
-		
+
 		socketServer = socket.NewServer(
 			socket.WithCompression(true),
 			socket.WithBufferSize(4096),
 			socket.WithPingInterval(25*time.Second),
 		)
 
-		
 		socketServer.HandleFunc(socket.EventConnect, func(s socket.Socket, _ interface{}) {
-			
+
 			s.Send("connected", map[string]interface{}{
 				"status":     "connected",
 				"message":    "Connected to Go on Airplanes LiveReload server",
@@ -47,7 +56,6 @@ func NewFileWatcher(router *Router, logger *AppLogger) (*FileWatcher, error) {
 			})
 		})
 
-		
 		socketServer.HandleFunc("ping", func(s socket.Socket, data interface{}) {
 			s.Send("pong", map[string]interface{}{
 				"time": time.Now().UnixNano() / int64(time.Millisecond),
@@ -55,7 +63,7 @@ func NewFileWatcher(router *Router, logger *AppLogger) (*FileWatcher, error) {
 		})
 
 		socketServer.HandleFunc(socket.EventDisconnect, func(s socket.Socket, _ interface{}) {
-			
+
 		})
 	}
 
@@ -65,10 +73,16 @@ func NewFileWatcher(router *Router, logger *AppLogger) (*FileWatcher, error) {
 		dirs:         []string{AppConfig.AppDir, AppConfig.StaticDir},
 		logger:       logger,
 		socketServer: socketServer,
+		enabled:      true,
 	}, nil
 }
 
 func (fw *FileWatcher) Start() {
+	if !fw.enabled {
+		fw.logger.InfoLog.Printf("File watcher is disabled, skipping start")
+		return
+	}
+
 	fw.logger.InfoLog.Printf("Starting file watcher...")
 
 	for _, dir := range fw.dirs {
@@ -84,6 +98,10 @@ func (fw *FileWatcher) Start() {
 }
 
 func (fw *FileWatcher) Stop() {
+	if !fw.enabled {
+		return
+	}
+
 	if fw.watcher != nil {
 		fw.watcher.Close()
 		fw.logger.InfoLog.Printf("File watcher stopped")
@@ -201,6 +219,10 @@ func (fw *FileWatcher) watchDir(dir string) error {
 }
 
 func (fw *FileWatcher) RegisterSocketHandler(mux *http.ServeMux) {
+	if !fw.enabled {
+		return
+	}
+
 	if fw.socketServer != nil && AppConfig.DevMode {
 		fw.logger.InfoLog.Printf("Registering WebSocket handler at /socket endpoint for live reload")
 		mux.HandleFunc("/socket", fw.socketServer.HandleHTTP)
