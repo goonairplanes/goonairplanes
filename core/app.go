@@ -107,12 +107,27 @@ func (app *GonAirApp) Start() error {
 
 	app.printBanner(port)
 
+	
+	http.DefaultTransport = &http.Transport{
+		MaxIdleConns:        1024,
+		MaxIdleConnsPerHost: 100,
+		MaxConnsPerHost:     0, 
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+		DisableCompression:  true, 
+	}
+
+	
 	server := &http.Server{
-		Addr:         ":" + port,
-		Handler:      app.Router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:    ":" + port,
+		Handler: app.Router,
+		
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		
+		MaxHeaderBytes: 1 << 20, 
 	}
 
 	app.Logger.InfoLog.Printf("Press Ctrl+C to stop the server")

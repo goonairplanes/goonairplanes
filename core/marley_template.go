@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"time"
 )
 
+var renderCache = &sync.Map{}
 
 func (m *Marley) LoadTemplates() error {
 	m.mutex.Lock()
@@ -225,7 +227,6 @@ func (m *Marley) LoadTemplates() error {
 	return nil
 }
 
-
 func (m *Marley) loadComponents() error {
 	componentCache := make(map[string]string)
 	componentDir := AppConfig.ComponentDir
@@ -256,85 +257,94 @@ func (m *Marley) loadComponents() error {
 	return nil
 }
 
-
 func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interface{}) error {
+	startTime := time.Now()
 	m.mutex.RLock()
-	tmpl, exists := m.Templates[route]
-	metadata, metadataExists := m.PageMetadata[route]
-
-	cachedContent, hasCachedContent := m.SSGCache[route]
+	tmpl, ok := m.Templates[route]
+	metadata, metaOk := m.PageMetadata[route]
 	m.mutex.RUnlock()
 
-	if !exists {
-		return fmt.Errorf("template for route %s not found", route)
+	if !ok {
+		return fmt.Errorf("template not found: %s", route)
 	}
 
-	var finalMetadata *PageMetadata
-	if metadataExists {
-		finalMetadata = m.mergeMetadata(route, metadata)
-	} else {
-		if m.LayoutMetadata != nil {
-			finalMetadata = m.LayoutMetadata
-		} else {
-			finalMetadata = &PageMetadata{
-				Title:       "Go on Airplanes",
-				Description: AppConfig.DefaultMetaTags["description"],
-				MetaTags:    AppConfig.DefaultMetaTags,
-				RenderMode:  AppConfig.DefaultRenderMode,
-			}
+	if !metaOk {
+		metadata = &PageMetadata{
+			Title:       defaultTitle,
+			Description: AppConfig.DefaultMetaTags["description"],
+			MetaTags:    make(map[string]string),
+			RenderMode:  AppConfig.DefaultRenderMode,
 		}
 	}
 
-	
-	if AppConfig.SSGEnabled && finalMetadata.RenderMode == "ssg" {
-		if hasCachedContent {
+	finalMetadata := m.mergeMetadata(route, metadata)
+
+	if cachedContent := m.GetCachedSSGContent(route); cachedContent != "" {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("X-SSG-Cached", "true")
+		io.WriteString(w, cachedContent)
+		return nil
+	}
+
+	cacheKey := "rendered:" + route
+	if cachedHTML, found := renderCache.Load(cacheKey); found {
+		if renderedHTML, ok := cachedHTML.(string); ok {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write([]byte(cachedContent))
-			m.Logger.InfoLog.Printf("Served SSG content from memory cache: %s", route)
+			w.Header().Set("X-Template-Cached", "true")
+			io.WriteString(w, renderedHTML)
 			return nil
-		} else {
-			if err := m.generateStaticFile(route, tmpl, metadata); err != nil {
-				m.Logger.WarnLog.Printf("Failed to generate SSG content for %s: %v", route, err)
-				
-			} else {
-				m.mutex.RLock()
-				cachedContent, hasCachedContent = m.SSGCache[route]
-				m.mutex.RUnlock()
-
-				if hasCachedContent {
-					w.Header().Set("Content-Type", "text/html; charset=utf-8")
-					w.Write([]byte(cachedContent))
-					m.Logger.InfoLog.Printf("Served freshly generated SSG content: %s", route)
-					return nil
-				}
-			}
 		}
 	}
 
-	
+	if AppConfig.LogLevel != "error" {
+		m.Logger.InfoLog.Printf("Rendering template %s with mode: %s, title: %s",
+			route, finalMetadata.RenderMode, finalMetadata.Title)
+	}
+
+	var buffer strings.Builder
+	buffer.Grow(16 * 1024)
+
 	now := time.Now()
 	templateData := map[string]interface{}{
 		"Metadata":    finalMetadata,
 		"Config":      &AppConfig,
+		"BuildTime":   now.Format(time.RFC1123),
 		"ServerTime":  now.Format(time.RFC1123),
 		"CurrentTime": now,
 		"Route":       route,
+		"Data":        data,
 	}
 
 	if m.BundleMode {
 		templateData["Bundles"] = m.BundledAssets
 	}
 
-	if existingData, ok := data.(map[string]interface{}); ok {
-		for k, v := range existingData {
-			templateData[k] = v
-		}
-	} else if data != nil {
-		templateData["Data"] = data
+	err := tmpl.ExecuteTemplate(&buffer, "layout", templateData)
+	if err != nil {
+		return fmt.Errorf("error rendering template: %w", err)
 	}
 
-	m.Logger.InfoLog.Printf("Rendering template %s with mode: %s, title: %s",
-		route, finalMetadata.RenderMode, finalMetadata.Title)
+	renderedHTML := buffer.String()
 
-	return tmpl.ExecuteTemplate(w, "layout", templateData)
+	if AppConfig.TemplateCache && len(renderedHTML) < 64*1024 {
+		renderCache.Store(cacheKey, renderedHTML)
+	}
+
+	if finalMetadata.RenderMode == "ssg" && AppConfig.SSGEnabled {
+		go func() {
+			if err := m.generateStaticFile(route, tmpl, metadata); err != nil {
+				m.Logger.WarnLog.Printf("Failed to generate static file for %s: %v", route, err)
+			}
+		}()
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	io.WriteString(w, renderedHTML)
+
+	renderTime := time.Since(startTime)
+	if renderTime > 5*time.Millisecond && AppConfig.LogLevel == "debug" {
+		m.Logger.InfoLog.Printf("Slow template render: %s took %v", route, renderTime)
+	}
+
+	return nil
 }
