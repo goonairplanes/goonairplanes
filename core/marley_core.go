@@ -42,7 +42,6 @@ func NewMarley(logger *AppLogger) *Marley {
 		BundleMode:      false,
 	}
 
-	
 	if AppConfig.InMemoryJS {
 		logger.InfoLog.Printf("Pre-initializing JavaScript libraries...")
 		if err := FetchAndCacheJSLibraries(); err != nil {
@@ -70,5 +69,10 @@ func (m *Marley) InvalidateCache() {
 	m.SSGCache = make(map[string]SSGCacheEntry)
 	m.ssgMutex.Unlock()
 
-	m.Logger.InfoLog.Printf("Template and SSG cache invalidated")
+	renderCache = &sync.Map{}
+
+	m.Templates = make(map[string]*template.Template)
+	m.ComponentsCache = make(map[string]string)
+
+	m.Logger.InfoLog.Printf("All caches invalidated: template, render, SSG and component caches cleared")
 }

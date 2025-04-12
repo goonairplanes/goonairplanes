@@ -327,7 +327,6 @@ func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interf
 
 	renderedHTML := buffer.String()
 
-	
 	renderedHTML = injectJavaScriptLibraries(renderedHTML, finalMetadata.JSLibrary)
 
 	if AppConfig.TemplateCache && len(renderedHTML) < 64*1024 {
@@ -353,10 +352,11 @@ func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interf
 	return nil
 }
 
-
 func injectJavaScriptLibraries(html, jsLibrary string) string {
 	if jsLibrary == "vanilla" {
-		return html
+		if !AppConfig.DevMode {
+			return html
+		}
 	}
 
 	scriptContent, inMemory, cdnURL := GetJSLibraryContent(jsLibrary)
@@ -373,6 +373,15 @@ func injectJavaScriptLibraries(html, jsLibrary string) string {
 			scriptTag = fmt.Sprintf("<script>%s</script>", scriptContent)
 		} else {
 			scriptTag = fmt.Sprintf("<script src=\"%s\"></script>", cdnURL)
+		}
+	}
+
+	if AppConfig.DevMode {
+		wsClientJS := GetWebSocketClientJS()
+		if scriptTag != "" {
+			scriptTag = scriptTag + "\n" + wsClientJS
+		} else {
+			scriptTag = wsClientJS
 		}
 	}
 

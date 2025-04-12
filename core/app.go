@@ -52,7 +52,6 @@ func (app *GonAirApp) Init() error {
 	}
 	app.Logger.InfoLog.Printf("Routes initialized successfully")
 
-	
 	if AppConfig.InMemoryJS {
 		app.Logger.InfoLog.Printf("Initializing JavaScript library cache...")
 		if err := FetchAndCacheJSLibraries(); err != nil {
@@ -127,9 +126,18 @@ func (app *GonAirApp) Start() error {
 		DisableCompression:  true,
 	}
 
+	mux := http.NewServeMux()
+
+	if app.Config.DevMode && app.FileWatcher != nil {
+
+		app.FileWatcher.RegisterSocketHandler(mux)
+	}
+
+	mux.Handle("/", app.Router)
+
 	server := &http.Server{
 		Addr:    ":" + port,
-		Handler: app.Router,
+		Handler: mux,
 
 		ReadTimeout:       15 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,

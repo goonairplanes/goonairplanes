@@ -48,24 +48,10 @@ func ConfigureMiddleware(app *core.GonAirApp) {
 		return true
 	}))
 
-	// Removed the AddAPIRoute call for /api/secure as API routes are registered
-	// via init() in their respective packages. Middleware for specific API
-	// routes should be applied by wrapping the handler during registration.
-	/*
-		app.Router.AddAPIRoute("/api/secure", nil,
-			func(next http.Handler) http.Handler {
-				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					app.Logger.InfoLog.Printf("🔒 API Auth Middleware: Checking access for %s", r.URL.Path)
-					next.ServeHTTP(w, r)
-				})
-			},
-			core.AuthMiddleware(func(token string) bool {
-				app.Logger.InfoLog.Printf("🔑 Token validation for API access")
-				return true
-			}),
-			core.RateLimitMiddleware(10),
-		)
-	*/
+	
+	
+	
+	
 
 	app.Logger.InfoLog.Printf("✅ Middleware configuration completed")
 }
