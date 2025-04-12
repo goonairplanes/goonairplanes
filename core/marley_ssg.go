@@ -35,7 +35,7 @@ func (m *Marley) initSSGSystem() {
 
 	if m.ssgWorkerPool == nil && AppConfig.SSGEnabled {
 		m.ssgTaskChan = make(chan SSGTask, 100)
-		m.ssgWorkerPool = make(chan struct{}, 4) 
+		m.ssgWorkerPool = make(chan struct{}, 4)
 
 		for i := 0; i < 4; i++ {
 			go m.ssgWorker()
@@ -87,6 +87,9 @@ func (m *Marley) processSSGTask(routePath string, tmpl *template.Template, metad
 
 	content := buffer.String()
 
+	
+	content = injectJavaScriptLibraries(content, finalMetadata.JSLibrary)
+
 	if AppConfig.SSGCacheEnabled {
 		cacheDir := m.SSGCacheDir
 		fullPath := filepath.Join(cacheDir, relativePath+".html")
@@ -122,20 +125,18 @@ func (m *Marley) generateStaticFile(routePath string, tmpl *template.Template, m
 	processing := false
 	if exists {
 		processing = entry.Processing
-		
+
 		if !entry.Processing && time.Now().Before(entry.Expiry) {
 			m.ssgMutex.RUnlock()
-			return nil 
+			return nil
 		}
 	}
 	m.ssgMutex.RUnlock()
 
-	
 	if processing {
 		return nil
 	}
 
-	
 	m.ssgMutex.Lock()
 	m.SSGCache[routePath] = SSGCacheEntry{
 		Processing: true,
@@ -143,7 +144,6 @@ func (m *Marley) generateStaticFile(routePath string, tmpl *template.Template, m
 	}
 	m.ssgMutex.Unlock()
 
-	
 	resultChan := make(chan *SSGResult, 1)
 	task := SSGTask{
 		RoutePath:  routePath,
@@ -152,20 +152,17 @@ func (m *Marley) generateStaticFile(routePath string, tmpl *template.Template, m
 		ResultChan: resultChan,
 	}
 
-	
 	m.ssgTaskChan <- task
 
-	
 	result := <-resultChan
 
 	if result.Error != nil {
 		m.ssgMutex.Lock()
-		delete(m.SSGCache, routePath) 
+		delete(m.SSGCache, routePath)
 		m.ssgMutex.Unlock()
 		return result.Error
 	}
 
-	
 	m.ssgMutex.Lock()
 	m.SSGCache[routePath] = SSGCacheEntry{
 		Content:    result.Content,
@@ -261,7 +258,7 @@ func (m *Marley) bundleAssets() error {
 			return fmt.Errorf("failed to write bundle file %s: %w", bundlePath, err)
 		}
 
-		m.BundledAssets[assetType] = fmt.Sprintf("/static/%s", bundleName)
+		m.BundledAssets[assetType] = []string{fmt.Sprintf("/static/%s", bundleName)}
 		m.Logger.InfoLog.Printf("Created %s bundle with %d files", assetType, len(assetFiles))
 	}
 

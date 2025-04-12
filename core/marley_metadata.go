@@ -12,6 +12,7 @@ type PageMetadata struct {
 	Description string
 	MetaTags    map[string]string
 	RenderMode  string
+	JSLibrary   string
 }
 
 var (
@@ -19,14 +20,17 @@ var (
 	renderModeRegex = regexp.MustCompile(`<!--render:([a-zA-Z]+)-->`)
 	titleRegex      = regexp.MustCompile(`<!--title:([^-]+)-->`)
 	descRegex       = regexp.MustCompile(`<!--description:([^-]+)-->`)
+	jsLibraryRegex  = regexp.MustCompile(`<!--js:\s*([a-zA-Z]+)\s*-->`)
 
 	htmlCommentMetaTagRegex    = regexp.MustCompile(`<!---meta:([a-zA-Z0-9_:,\-\s]+)(?:-->|--->)`)
 	htmlCommentRenderModeRegex = regexp.MustCompile(`<!---render:([a-zA-Z]+)(?:-->|--->)`)
 	htmlCommentTitleRegex      = regexp.MustCompile(`<!---title:([^-]+)(?:-->|--->)`)
 	htmlCommentDescRegex       = regexp.MustCompile(`<!---description:([^-]+)(?:-->|--->)`)
+	htmlCommentJSLibraryRegex  = regexp.MustCompile(`<!---js:\s*([a-zA-Z]+)\s*(?:-->|--->)`)
 
 	defaultTitle      = "Go on Airplanes"
 	defaultRenderMode = "ssr"
+	defaultJSLibrary  = "alpine"
 )
 
 type MetadataCache struct {
@@ -42,7 +46,6 @@ type extractRequest struct {
 	filePath string
 	result   chan *PageMetadata
 }
-
 
 var metadataCache = NewMetadataCache(8, 30*time.Minute)
 
@@ -115,16 +118,15 @@ func extractPageMetadataInternal(content, _ string) *PageMetadata {
 	metadata := &PageMetadata{
 		Title:       defaultTitle,
 		Description: AppConfig.DefaultMetaTags["description"],
-		MetaTags:    make(map[string]string, len(AppConfig.DefaultMetaTags)+4), 
+		MetaTags:    make(map[string]string, len(AppConfig.DefaultMetaTags)+4),
 		RenderMode:  AppConfig.DefaultRenderMode,
+		JSLibrary:   defaultJSLibrary,
 	}
 
-	
 	for k, v := range AppConfig.DefaultMetaTags {
 		metadata.MetaTags[k] = v
 	}
 
-	
 	if match := htmlCommentTitleRegex.FindStringSubmatch(content); len(match) > 1 {
 		title := strings.TrimSpace(match[1])
 		title = strings.TrimSuffix(title, "-")
@@ -151,7 +153,6 @@ func extractPageMetadataInternal(content, _ string) *PageMetadata {
 		metadata.MetaTags["og:description"] = desc
 	}
 
-	
 	if match := htmlCommentRenderModeRegex.FindStringSubmatch(content); len(match) > 1 {
 		mode := strings.ToLower(strings.TrimSpace(strings.TrimSuffix(match[1], "-")))
 		if mode == "ssg" {
@@ -164,7 +165,6 @@ func extractPageMetadataInternal(content, _ string) *PageMetadata {
 		}
 	}
 
-	
 	for _, match := range htmlCommentMetaTagRegex.FindAllStringSubmatch(content, -1) {
 		if len(match) > 1 {
 			metaText := strings.TrimSpace(match[1])
@@ -191,6 +191,24 @@ func extractPageMetadataInternal(content, _ string) *PageMetadata {
 		}
 	}
 
+	
+	if match := htmlCommentJSLibraryRegex.FindStringSubmatch(content); len(match) > 1 {
+		jsLibrary := strings.TrimSpace(match[1])
+		jsLibrary = strings.ToLower(jsLibrary)
+		
+		switch jsLibrary {
+		case "alpine", "jquery", "vanilla":
+			metadata.JSLibrary = jsLibrary
+		}
+	} else if match := jsLibraryRegex.FindStringSubmatch(content); len(match) > 1 {
+		jsLibrary := strings.ToLower(strings.TrimSpace(match[1]))
+		
+		switch jsLibrary {
+		case "alpine", "jquery", "vanilla":
+			metadata.JSLibrary = jsLibrary
+		}
+	}
+
 	return metadata
 }
 
@@ -201,7 +219,6 @@ func extractPageMetadata(content, filePath string) *PageMetadata {
 		return metadata
 	}
 
-	
 	if len(content) < 1024 {
 		metadata := extractPageMetadataInternal(content, filePath)
 		metadataCache.Set(cacheKey, metadata)
@@ -228,11 +245,13 @@ func processPageContent(content string, _ *PageMetadata) string {
 	content = descRegex.ReplaceAllString(content, "")
 	content = metaTagRegex.ReplaceAllString(content, "")
 	content = renderModeRegex.ReplaceAllString(content, "")
+	content = jsLibraryRegex.ReplaceAllString(content, "")
 
 	content = htmlCommentTitleRegex.ReplaceAllString(content, "")
 	content = htmlCommentDescRegex.ReplaceAllString(content, "")
 	content = htmlCommentMetaTagRegex.ReplaceAllString(content, "")
 	content = htmlCommentRenderModeRegex.ReplaceAllString(content, "")
+	content = htmlCommentJSLibraryRegex.ReplaceAllString(content, "")
 
 	content = strings.TrimLeft(content, "\r\n")
 
@@ -254,9 +273,9 @@ func (m *Marley) mergeMetadata(routePath string, pageMetadata *PageMetadata) *Pa
 		Description: AppConfig.DefaultMetaTags["description"],
 		MetaTags:    make(map[string]string, len(AppConfig.DefaultMetaTags)+4),
 		RenderMode:  AppConfig.DefaultRenderMode,
+		JSLibrary:   defaultJSLibrary,
 	}
 
-	
 	for k, v := range AppConfig.DefaultMetaTags {
 		if k != "description" && k != "og:description" && k != "og:title" {
 			result.MetaTags[k] = v
@@ -281,6 +300,10 @@ func (m *Marley) mergeMetadata(routePath string, pageMetadata *PageMetadata) *Pa
 		if m.LayoutMetadata.RenderMode != AppConfig.DefaultRenderMode {
 			result.RenderMode = m.LayoutMetadata.RenderMode
 		}
+
+		if m.LayoutMetadata.JSLibrary != defaultJSLibrary {
+			result.JSLibrary = m.LayoutMetadata.JSLibrary
+		}
 	}
 
 	if pageMetadata.Title != defaultTitle {
@@ -301,6 +324,11 @@ func (m *Marley) mergeMetadata(routePath string, pageMetadata *PageMetadata) *Pa
 		result.RenderMode = pageMetadata.RenderMode
 	}
 
+	
+	if pageMetadata.JSLibrary != defaultJSLibrary {
+		result.JSLibrary = pageMetadata.JSLibrary
+	}
+
 	result.MetaTags["og:title"] = result.Title
 
 	if result.Description != "" {
@@ -309,11 +337,12 @@ func (m *Marley) mergeMetadata(routePath string, pageMetadata *PageMetadata) *Pa
 	}
 
 	if AppConfig.LogLevel == "debug" {
-		m.Logger.InfoLog.Printf("Merged metadata for %s: Title='%s', Description='%s...', Mode='%s'",
+		m.Logger.InfoLog.Printf("Merged metadata for %s: Title='%s', Description='%s...', Mode='%s', JS='%s'",
 			routePath,
 			result.Title,
 			truncateString(result.Description, 30),
-			result.RenderMode)
+			result.RenderMode,
+			result.JSLibrary)
 	}
 
 	metadataCache.Set(cacheKey, result)

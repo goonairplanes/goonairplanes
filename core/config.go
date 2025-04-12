@@ -9,6 +9,7 @@ type Config struct {
 	DefaultCDNs    bool
 	TailwindCDN    string
 	JQueryCDN      string
+	AlpineJSCDN    string
 	LayoutPath     string
 	ComponentDir   string
 	AppName        string
@@ -18,6 +19,9 @@ type Config struct {
 	EnableCORS     bool
 	AllowedOrigins []string
 	RateLimit      int
+
+	InMemoryJS     bool
+	JSLibraryCache map[string]string
 
 	DefaultRenderMode string
 	SSGDir            string
@@ -36,6 +40,7 @@ var AppConfig = Config{
 	DefaultCDNs:    true,
 	TailwindCDN:    "https://cdn.tailwindcss.com",
 	JQueryCDN:      "https://code.jquery.com/jquery-3.7.1.min.js",
+	AlpineJSCDN:    "https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js",
 	LayoutPath:     "app/layout.html",
 	ComponentDir:   "app/components",
 	AppName:        "Go on Airplanes",
@@ -45,6 +50,9 @@ var AppConfig = Config{
 	EnableCORS:     false,
 	AllowedOrigins: []string{"*"},
 	RateLimit:      100,
+
+	InMemoryJS:     true,
+	JSLibraryCache: make(map[string]string),
 
 	DefaultRenderMode: "ssr",
 	SSGDir:            "static/generated",

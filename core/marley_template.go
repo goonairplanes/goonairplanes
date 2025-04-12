@@ -274,6 +274,7 @@ func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interf
 			Description: AppConfig.DefaultMetaTags["description"],
 			MetaTags:    make(map[string]string),
 			RenderMode:  AppConfig.DefaultRenderMode,
+			JSLibrary:   defaultJSLibrary,
 		}
 	}
 
@@ -297,8 +298,8 @@ func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interf
 	}
 
 	if AppConfig.LogLevel != "error" {
-		m.Logger.InfoLog.Printf("Rendering template %s with mode: %s, title: %s",
-			route, finalMetadata.RenderMode, finalMetadata.Title)
+		m.Logger.InfoLog.Printf("Rendering template %s with mode: %s, title: %s, js: %s",
+			route, finalMetadata.RenderMode, finalMetadata.Title, finalMetadata.JSLibrary)
 	}
 
 	var buffer strings.Builder
@@ -326,6 +327,9 @@ func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interf
 
 	renderedHTML := buffer.String()
 
+	
+	renderedHTML = injectJavaScriptLibraries(renderedHTML, finalMetadata.JSLibrary)
+
 	if AppConfig.TemplateCache && len(renderedHTML) < 64*1024 {
 		renderCache.Store(cacheKey, renderedHTML)
 	}
@@ -347,4 +351,34 @@ func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interf
 	}
 
 	return nil
+}
+
+
+func injectJavaScriptLibraries(html, jsLibrary string) string {
+	if jsLibrary == "vanilla" {
+		return html
+	}
+
+	scriptContent, inMemory, cdnURL := GetJSLibraryContent(jsLibrary)
+
+	var scriptTag string
+	if jsLibrary == "alpine" {
+		if inMemory {
+			scriptTag = fmt.Sprintf("<script defer>%s</script>", scriptContent)
+		} else {
+			scriptTag = fmt.Sprintf("<script defer src=\"%s\"></script>", cdnURL)
+		}
+	} else if jsLibrary == "jquery" {
+		if inMemory {
+			scriptTag = fmt.Sprintf("<script>%s</script>", scriptContent)
+		} else {
+			scriptTag = fmt.Sprintf("<script src=\"%s\"></script>", cdnURL)
+		}
+	}
+
+	if scriptTag != "" {
+		return strings.Replace(html, "</head>", scriptTag+"\n</head>", 1)
+	}
+
+	return html
 }

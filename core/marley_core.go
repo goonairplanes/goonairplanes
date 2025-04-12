@@ -17,7 +17,7 @@ type Marley struct {
 	cacheExpiry     time.Time
 	cacheTTL        time.Duration
 	Logger          *AppLogger
-	BundledAssets   map[string]string
+	BundledAssets   map[string][]string
 	BundleMode      bool
 
 	SSGCache      map[string]SSGCacheEntry
@@ -28,20 +28,29 @@ type Marley struct {
 }
 
 func NewMarley(logger *AppLogger) *Marley {
-	return &Marley{
+	m := &Marley{
 		Templates:       make(map[string]*template.Template),
-		Components:      make(map[string]*template.Template),
-		ComponentsCache: make(map[string]string),
 		PageMetadata:    make(map[string]*PageMetadata),
-		LayoutMetadata:  nil,
-		cacheTTL:        5 * time.Minute,
-		Logger:          logger,
-		BundledAssets:   make(map[string]string),
-		BundleMode:      false,
 		SSGCache:        make(map[string]SSGCacheEntry),
-		SSGCacheDir:     ".goa/cache",
+		SSGCacheDir:     AppConfig.SSGDir,
+		ComponentsCache: make(map[string]string),
+		BundledAssets:   make(map[string][]string),
+		cacheTTL:        15 * time.Minute,
+		mutex:           sync.RWMutex{},
 		ssgMutex:        &sync.RWMutex{},
+		Logger:          logger,
+		BundleMode:      false,
 	}
+
+	
+	if AppConfig.InMemoryJS {
+		logger.InfoLog.Printf("Pre-initializing JavaScript libraries...")
+		if err := FetchAndCacheJSLibraries(); err != nil {
+			logger.WarnLog.Printf("Failed to pre-cache JavaScript libraries: %v", err)
+		}
+	}
+
+	return m
 }
 
 func (m *Marley) SetCacheTTL(duration time.Duration) {
