@@ -20,8 +20,11 @@ type Marley struct {
 	BundledAssets   map[string]string
 	BundleMode      bool
 
-	SSGCache    map[string]string
-	SSGCacheDir string
+	SSGCache      map[string]SSGCacheEntry
+	SSGCacheDir   string
+	ssgMutex      *sync.RWMutex
+	ssgTaskChan   chan SSGTask
+	ssgWorkerPool chan struct{}
 }
 
 func NewMarley(logger *AppLogger) *Marley {
@@ -35,8 +38,9 @@ func NewMarley(logger *AppLogger) *Marley {
 		Logger:          logger,
 		BundledAssets:   make(map[string]string),
 		BundleMode:      false,
-		SSGCache:        make(map[string]string),
+		SSGCache:        make(map[string]SSGCacheEntry),
 		SSGCacheDir:     ".goa/cache",
+		ssgMutex:        &sync.RWMutex{},
 	}
 }
 
@@ -53,6 +57,9 @@ func (m *Marley) InvalidateCache() {
 	defer m.mutex.Unlock()
 	m.cacheExpiry = time.Time{}
 
-	m.SSGCache = make(map[string]string)
+	m.ssgMutex.Lock()
+	m.SSGCache = make(map[string]SSGCacheEntry)
+	m.ssgMutex.Unlock()
+
 	m.Logger.InfoLog.Printf("Template and SSG cache invalidated")
 }

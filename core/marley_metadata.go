@@ -3,8 +3,9 @@ package core
 import (
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 )
-
 
 type PageMetadata struct {
 	Title       string
@@ -13,110 +14,176 @@ type PageMetadata struct {
 	RenderMode  string
 }
 
-var metaTagRegex = regexp.MustCompile(`<!--meta:([a-zA-Z0-9_:,\-\s]+)-->`)
-var renderModeRegex = regexp.MustCompile(`<!--render:([a-zA-Z]+)-->`)
-var titleRegex = regexp.MustCompile(`<!--title:([^-]+)-->`)
-var descRegex = regexp.MustCompile(`<!--description:([^-]+)-->`)
+var (
+	metaTagRegex    = regexp.MustCompile(`<!--meta:([a-zA-Z0-9_:,\-\s]+)-->`)
+	renderModeRegex = regexp.MustCompile(`<!--render:([a-zA-Z]+)-->`)
+	titleRegex      = regexp.MustCompile(`<!--title:([^-]+)-->`)
+	descRegex       = regexp.MustCompile(`<!--description:([^-]+)-->`)
 
-var htmlCommentMetaTagRegex = regexp.MustCompile(`<!---meta:([a-zA-Z0-9_:,\-\s]+)(?:-->|--->)`)
-var htmlCommentRenderModeRegex = regexp.MustCompile(`<!---render:([a-zA-Z]+)(?:-->|--->)`)
-var htmlCommentTitleRegex = regexp.MustCompile(`<!---title:([^-]+)(?:-->|--->)`)
-var htmlCommentDescRegex = regexp.MustCompile(`<!---description:([^-]+)(?:-->|--->)`)
+	htmlCommentMetaTagRegex    = regexp.MustCompile(`<!---meta:([a-zA-Z0-9_:,\-\s]+)(?:-->|--->)`)
+	htmlCommentRenderModeRegex = regexp.MustCompile(`<!---render:([a-zA-Z]+)(?:-->|--->)`)
+	htmlCommentTitleRegex      = regexp.MustCompile(`<!---title:([^-]+)(?:-->|--->)`)
+	htmlCommentDescRegex       = regexp.MustCompile(`<!---description:([^-]+)(?:-->|--->)`)
+
+	defaultTitle      = "Go on Airplanes"
+	defaultRenderMode = "ssr"
+)
+
+type MetadataCache struct {
+	cache    map[string]*PageMetadata
+	expiry   map[string]time.Time
+	ttl      time.Duration
+	mutex    sync.RWMutex
+	extractC chan extractRequest
+}
+
+type extractRequest struct {
+	content  string
+	filePath string
+	result   chan *PageMetadata
+}
 
 
-func extractPageMetadata(content, _ string) *PageMetadata {
+var metadataCache = NewMetadataCache(8, 30*time.Minute)
+
+func NewMetadataCache(workers int, ttl time.Duration) *MetadataCache {
+	mc := &MetadataCache{
+		cache:    make(map[string]*PageMetadata),
+		expiry:   make(map[string]time.Time),
+		ttl:      ttl,
+		extractC: make(chan extractRequest, workers*2),
+	}
+
+	for i := 0; i < workers; i++ {
+		go mc.worker()
+	}
+
+	go mc.cleanExpired(30 * time.Minute)
+
+	return mc
+}
+
+func (mc *MetadataCache) worker() {
+	for req := range mc.extractC {
+		metadata := extractPageMetadataInternal(req.content, req.filePath)
+		req.result <- metadata
+	}
+}
+
+func (mc *MetadataCache) cleanExpired(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		now := time.Now()
+		mc.mutex.Lock()
+		for key, expiry := range mc.expiry {
+			if now.After(expiry) {
+				delete(mc.cache, key)
+				delete(mc.expiry, key)
+			}
+		}
+		mc.mutex.Unlock()
+	}
+}
+
+func (mc *MetadataCache) Get(key string) (*PageMetadata, bool) {
+	mc.mutex.RLock()
+	defer mc.mutex.RUnlock()
+
+	metadata, ok := mc.cache[key]
+	if !ok {
+		return nil, false
+	}
+
+	if time.Now().After(mc.expiry[key]) {
+		return nil, false
+	}
+
+	return metadata, true
+}
+
+func (mc *MetadataCache) Set(key string, metadata *PageMetadata) {
+	mc.mutex.Lock()
+	defer mc.mutex.Unlock()
+
+	mc.cache[key] = metadata
+	mc.expiry[key] = time.Now().Add(mc.ttl)
+}
+
+func extractPageMetadataInternal(content, _ string) *PageMetadata {
 	metadata := &PageMetadata{
-		Title:       "Go on Airplanes",
+		Title:       defaultTitle,
 		Description: AppConfig.DefaultMetaTags["description"],
-		MetaTags:    make(map[string]string),
+		MetaTags:    make(map[string]string, len(AppConfig.DefaultMetaTags)+4), 
 		RenderMode:  AppConfig.DefaultRenderMode,
 	}
 
+	
 	for k, v := range AppConfig.DefaultMetaTags {
 		metadata.MetaTags[k] = v
 	}
 
-	foundTitle := false
-	foundDesc := false
-	foundRenderMode := false
-
-	htmlTitleMatch := htmlCommentTitleRegex.FindStringSubmatch(content)
-	if len(htmlTitleMatch) > 1 {
-		titleText := strings.TrimSpace(htmlTitleMatch[1])
-
-		titleText = strings.TrimSuffix(titleText, "-")
-		titleText = strings.TrimSpace(titleText)
-		metadata.Title = titleText
-		metadata.MetaTags["og:title"] = titleText
-		foundTitle = true
+	
+	if match := htmlCommentTitleRegex.FindStringSubmatch(content); len(match) > 1 {
+		title := strings.TrimSpace(match[1])
+		title = strings.TrimSuffix(title, "-")
+		title = strings.TrimSpace(title)
+		metadata.Title = title
+		metadata.MetaTags["og:title"] = title
+	} else if match := titleRegex.FindStringSubmatch(content); len(match) > 1 {
+		title := strings.TrimSpace(match[1])
+		metadata.Title = title
+		metadata.MetaTags["og:title"] = title
 	}
 
-	htmlDescMatch := htmlCommentDescRegex.FindStringSubmatch(content)
-	if len(htmlDescMatch) > 1 {
-		descText := strings.TrimSpace(htmlDescMatch[1])
-
-		descText = strings.TrimSuffix(descText, "-")
-		descText = strings.TrimSpace(descText)
-		metadata.Description = descText
-		metadata.MetaTags["description"] = descText
-		metadata.MetaTags["og:description"] = descText
-		foundDesc = true
+	if match := htmlCommentDescRegex.FindStringSubmatch(content); len(match) > 1 {
+		desc := strings.TrimSpace(match[1])
+		desc = strings.TrimSuffix(desc, "-")
+		desc = strings.TrimSpace(desc)
+		metadata.Description = desc
+		metadata.MetaTags["description"] = desc
+		metadata.MetaTags["og:description"] = desc
+	} else if match := descRegex.FindStringSubmatch(content); len(match) > 1 {
+		desc := strings.TrimSpace(match[1])
+		metadata.Description = desc
+		metadata.MetaTags["description"] = desc
+		metadata.MetaTags["og:description"] = desc
 	}
 
-	htmlMetaMatches := htmlCommentMetaTagRegex.FindAllStringSubmatch(content, -1)
-	for _, match := range htmlMetaMatches {
+	
+	if match := htmlCommentRenderModeRegex.FindStringSubmatch(content); len(match) > 1 {
+		mode := strings.ToLower(strings.TrimSpace(strings.TrimSuffix(match[1], "-")))
+		if mode == "ssg" {
+			metadata.RenderMode = mode
+		}
+	} else if match := renderModeRegex.FindStringSubmatch(content); len(match) > 1 {
+		mode := strings.ToLower(match[1])
+		if mode == "ssg" {
+			metadata.RenderMode = mode
+		}
+	}
+
+	
+	for _, match := range htmlCommentMetaTagRegex.FindAllStringSubmatch(content, -1) {
 		if len(match) > 1 {
 			metaText := strings.TrimSpace(match[1])
-
 			metaText = strings.TrimSuffix(metaText, "-")
 			metaText = strings.TrimSpace(metaText)
-			parts := strings.SplitN(metaText, ":", 2)
-			if len(parts) == 2 {
-				key := strings.TrimSpace(parts[0])
-				value := strings.TrimSpace(parts[1])
+			if idx := strings.IndexByte(metaText, ':'); idx > 0 {
+				key := strings.TrimSpace(metaText[:idx])
+				value := strings.TrimSpace(metaText[idx+1:])
 				metadata.MetaTags[key] = value
 			}
 		}
 	}
 
-	htmlRenderMatch := htmlCommentRenderModeRegex.FindStringSubmatch(content)
-	if len(htmlRenderMatch) > 1 {
-		renderText := strings.TrimSpace(htmlRenderMatch[1])
-
-		renderText = strings.TrimSuffix(renderText, "-")
-		renderText = strings.TrimSpace(renderText)
-		mode := strings.ToLower(renderText)
-		if mode == "ssg" {
-			metadata.RenderMode = mode
-			foundRenderMode = true
-		}
-	}
-
-	if !foundTitle {
-		titleMatch := titleRegex.FindStringSubmatch(content)
-		if len(titleMatch) > 1 {
-			metadata.Title = strings.TrimSpace(titleMatch[1])
-			metadata.MetaTags["og:title"] = metadata.Title
-		}
-	}
-
-	if !foundDesc {
-		descMatch := descRegex.FindStringSubmatch(content)
-		if len(descMatch) > 1 {
-			metadata.Description = strings.TrimSpace(descMatch[1])
-			metadata.MetaTags["description"] = metadata.Description
-			metadata.MetaTags["og:description"] = metadata.Description
-		}
-	}
-
-	metaMatches := metaTagRegex.FindAllStringSubmatch(content, -1)
-	for _, match := range metaMatches {
+	for _, match := range metaTagRegex.FindAllStringSubmatch(content, -1) {
 		if len(match) > 1 {
-			parts := strings.SplitN(match[1], ":", 2)
-			if len(parts) == 2 {
-				key := strings.TrimSpace(parts[0])
-				value := strings.TrimSpace(parts[1])
-
+			metaText := match[1]
+			if idx := strings.IndexByte(metaText, ':'); idx > 0 {
+				key := strings.TrimSpace(metaText[:idx])
+				value := strings.TrimSpace(metaText[idx+1:])
 				if _, exists := metadata.MetaTags[key]; !exists {
 					metadata.MetaTags[key] = value
 				}
@@ -124,19 +191,35 @@ func extractPageMetadata(content, _ string) *PageMetadata {
 		}
 	}
 
-	if !foundRenderMode {
-		renderMatch := renderModeRegex.FindStringSubmatch(content)
-		if len(renderMatch) > 1 {
-			mode := strings.ToLower(renderMatch[1])
-			if mode == "ssg" {
-				metadata.RenderMode = mode
-			}
-		}
-	}
-
 	return metadata
 }
 
+func extractPageMetadata(content, filePath string) *PageMetadata {
+	cacheKey := filePath
+
+	if metadata, found := metadataCache.Get(cacheKey); found {
+		return metadata
+	}
+
+	
+	if len(content) < 1024 {
+		metadata := extractPageMetadataInternal(content, filePath)
+		metadataCache.Set(cacheKey, metadata)
+		return metadata
+	}
+
+	resultChan := make(chan *PageMetadata, 1)
+	metadataCache.extractC <- extractRequest{
+		content:  content,
+		filePath: filePath,
+		result:   resultChan,
+	}
+
+	metadata := <-resultChan
+	metadataCache.Set(cacheKey, metadata)
+
+	return metadata
+}
 
 func processPageContent(content string, _ *PageMetadata) string {
 	contentBefore := len(content)
@@ -159,15 +242,21 @@ func processPageContent(content string, _ *PageMetadata) string {
 	return content
 }
 
-
 func (m *Marley) mergeMetadata(routePath string, pageMetadata *PageMetadata) *PageMetadata {
+	cacheKey := "merge:" + routePath
+
+	if metadata, found := metadataCache.Get(cacheKey); found {
+		return metadata
+	}
+
 	result := &PageMetadata{
-		Title:       "Go on Airplanes",
+		Title:       defaultTitle,
 		Description: AppConfig.DefaultMetaTags["description"],
-		MetaTags:    make(map[string]string),
+		MetaTags:    make(map[string]string, len(AppConfig.DefaultMetaTags)+4),
 		RenderMode:  AppConfig.DefaultRenderMode,
 	}
 
+	
 	for k, v := range AppConfig.DefaultMetaTags {
 		if k != "description" && k != "og:description" && k != "og:title" {
 			result.MetaTags[k] = v
@@ -175,7 +264,7 @@ func (m *Marley) mergeMetadata(routePath string, pageMetadata *PageMetadata) *Pa
 	}
 
 	if m.LayoutMetadata != nil {
-		if m.LayoutMetadata.Title != "Go on Airplanes" {
+		if m.LayoutMetadata.Title != defaultTitle {
 			result.Title = m.LayoutMetadata.Title
 		}
 
@@ -194,7 +283,7 @@ func (m *Marley) mergeMetadata(routePath string, pageMetadata *PageMetadata) *Pa
 		}
 	}
 
-	if pageMetadata.Title != "Go on Airplanes" {
+	if pageMetadata.Title != defaultTitle {
 		result.Title = pageMetadata.Title
 	}
 
@@ -219,11 +308,15 @@ func (m *Marley) mergeMetadata(routePath string, pageMetadata *PageMetadata) *Pa
 		result.MetaTags["og:description"] = result.Description
 	}
 
-	m.Logger.InfoLog.Printf("Merged metadata for %s: Title='%s', Description='%s...', Mode='%s'",
-		routePath,
-		result.Title,
-		truncateString(result.Description, 30),
-		result.RenderMode)
+	if AppConfig.LogLevel == "debug" {
+		m.Logger.InfoLog.Printf("Merged metadata for %s: Title='%s', Description='%s...', Mode='%s'",
+			routePath,
+			result.Title,
+			truncateString(result.Description, 30),
+			result.RenderMode)
+	}
+
+	metadataCache.Set(cacheKey, result)
 
 	return result
 }

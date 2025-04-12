@@ -13,26 +13,20 @@ import (
 
 var paramRegex = regexp.MustCompile(`\[([^/\]]+)\]`)
 
-
 var apiRegistry = make(map[string]map[string]func(*APIContext))
 var apiRegistryMutex sync.RWMutex
-
-
-
 
 func RegisterAPIHandler(path string, method string, handler func(*APIContext)) {
 	apiRegistryMutex.Lock()
 	defer apiRegistryMutex.Unlock()
 
-	
 	path = normalizePath(path)
 
 	if _, ok := apiRegistry[path]; !ok {
 		apiRegistry[path] = make(map[string]func(*APIContext))
 	}
 	apiRegistry[path][method] = handler
-	
-	
+
 }
 
 type Route struct {
@@ -128,11 +122,6 @@ func (r *Router) AddRoute(path string, handler http.HandlerFunc, middleware ...M
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	startTime := time.Now()
-
-	if AppConfig.LogLevel != "error" {
-		r.Logger.InfoLog.Printf("Incoming: %s %s", req.Method, req.URL.Path)
-	}
-
 	requestPath := normalizePath(req.URL.Path)
 
 	finalHandler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -140,7 +129,6 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			for _, route := range r.Routes {
 				if route.IsStatic {
 					route.Handler.ServeHTTP(w, req)
-					r.logRequest(req, http.StatusOK, time.Since(startTime))
 					return
 				}
 			}
@@ -173,13 +161,10 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					Config:  &AppConfig,
 				}
 				matchedHandler(ctx)
-				r.logRequest(req, 0, time.Since(startTime))
 				return
 			}
 
-			r.Logger.WarnLog.Printf("API route/method not found: %s %s", req.Method, requestPath)
 			RenderError(w, "API endpoint not found or method not allowed", http.StatusNotFound)
-			r.logRequest(req, http.StatusNotFound, time.Since(startTime))
 			return
 		}
 
@@ -214,19 +199,20 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 			finalPageRouteHandler := pageMiddleware.Then(pageHandler)
 			finalPageRouteHandler.ServeHTTP(w, req)
-			r.logRequest(req, http.StatusOK, time.Since(startTime))
 			return
 		}
 
-		r.Logger.WarnLog.Printf("Route not found: %s", requestPath)
 		r.serveErrorPage(w, req, http.StatusNotFound)
-		r.logRequest(req, http.StatusNotFound, time.Since(startTime))
 	})
 
 	if r.GlobalMiddleware != nil {
 		r.GlobalMiddleware.Then(finalHandler).ServeHTTP(w, req)
 	} else {
 		finalHandler.ServeHTTP(w, req)
+	}
+
+	if AppConfig.LogLevel != "error" {
+		go r.logRequest(req, http.StatusOK, time.Since(startTime))
 	}
 }
 
