@@ -30,6 +30,7 @@ I created this framework after one too many late nights wrestling with Next.js f
 - **Live Updates** – See changes instantly without restarting
 - **Ready for Real Work** – Built-in auth, logging, and security tools
 - **Zero Bloat** – No dependency nightmares here
+- **Frontend Freedom** – Choose your JavaScript library (Alpine.js, jQuery, or vanilla) with a simple comment
 
 > "It's like someone took the best parts of modern frameworks and made them actually enjoyable to use." – Probably you, after trying it
 
@@ -188,7 +189,60 @@ To use SSG, just add this comment to your HTML:
 <!--render:ssg-->
 ```
 
-### Asset Bundling
+## 🌟 JavaScript Library Integration
+
+Choose your preferred JavaScript library for each page with a simple comment:
+
+```html
+<!-- For Alpine.js (default) -->
+<!--js: alpine -->
+
+<!-- For jQuery -->
+<!--js: jquery -->
+
+<!-- For no library -->
+<!--js: vanilla -->
+```
+
+### Using Alpine.js (Default)
+
+Alpine.js provides reactive, declarative interactions with minimal code:
+
+```html
+<!--js: alpine -->
+
+<div x-data="{ open: false }">
+  <button @click="open = !open">Toggle Menu</button>
+  <nav x-show="open" class="menu">
+    <!-- Navigation items -->
+  </nav>
+</div>
+```
+
+### Using jQuery
+
+For complex DOM manipulation and AJAX:
+
+```html
+<!--js: jquery -->
+
+{{define "scripts"}}
+<script>
+  $(document).ready(function() {
+    $("#load-data").click(function() {
+      $.ajax({
+        url: "/api/data",
+        success: function(result) {
+          $("#result").html(result);
+        }
+      });
+    });
+  });
+</script>
+{{end}}
+```
+
+## Asset Bundling
 
 Go on Airplanes includes production-ready asset bundling for optimized performance:
 
@@ -266,8 +320,8 @@ Found a bug? Have an awesome idea? We're still in alpha and would love your help
 
 MIT Licensed – Fly wherever you want with this code ✈️
 
-> Fun fact: The GOA template renderer is named Marley — after the developer’s dog. <br>
-> Just like Marley, it’s loyal, fast, and makes everything feel like home. <br>
+> Fun fact: The GOA template renderer is named Marley — after the developer's dog. <br>
+> Just like Marley, it's loyal, fast, and makes everything feel like home. <br>
 > 🐶🚀🏠
 
 ---
