@@ -40,7 +40,7 @@ var AppConfig = Config{
 	DefaultCDNs:    true,
 	TailwindCDN:    "https://cdn.tailwindcss.com",
 	JQueryCDN:      "https://code.jquery.com/jquery-3.7.1.min.js",
-	AlpineJSCDN:    "https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js",
+	AlpineJSCDN:    "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js",
 	LayoutPath:     "app/layout.html",
 	ComponentDir:   "app/components",
 	AppName:        "Go on Airplanes",
