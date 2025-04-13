@@ -5,10 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"goonairplanes/core"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 
 	_ "goonairplanes/app/api/test"
 	_ "goonairplanes/app/api/users"
@@ -59,13 +59,9 @@ func loadConfig(path string) (*Configuration, error) {
 	}
 	defer configFile.Close()
 
-	configData, err := ioutil.ReadAll(configFile)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read config file: %v", err)
-	}
-
 	var config Configuration
-	if err := json.Unmarshal(configData, &config); err != nil {
+	decoder := json.NewDecoder(configFile)
+	if err := decoder.Decode(&config); err != nil {
 		return nil, fmt.Errorf("unable to parse config file: %v", err)
 	}
 
@@ -73,7 +69,6 @@ func loadConfig(path string) (*Configuration, error) {
 }
 
 func applyConfigToApp(config *Configuration) {
-	
 	core.AppConfig.Port = config.Server.Port
 	core.AppConfig.DevMode = config.Server.DevMode
 	core.AppConfig.IsBuiltSystem = config.Server.IsBuiltSystem
@@ -82,26 +77,21 @@ func applyConfigToApp(config *Configuration) {
 	core.AppConfig.AllowedOrigins = config.Server.AllowedOrigins
 	core.AppConfig.RateLimit = config.Server.RateLimit
 
-	
 	core.AppConfig.AppDir = config.Directories.AppDir
 	core.AppConfig.StaticDir = config.Directories.StaticDir
 	core.AppConfig.LayoutPath = config.Directories.LayoutPath
 	core.AppConfig.ComponentDir = config.Directories.ComponentDir
 
-	
 	core.AppConfig.TemplateCache = config.Performance.TemplateCache
 	core.AppConfig.InMemoryJS = config.Performance.InMemoryJS
 
-	
 	core.AppConfig.SSGEnabled = config.SSG.Enabled
 	core.AppConfig.SSGCacheEnabled = config.SSG.CacheEnabled
 	core.AppConfig.SSGDir = config.SSG.Directory
 
-	
 	core.AppConfig.AppName = config.Meta.AppName
 	core.AppConfig.DefaultMetaTags = config.Meta.DefaultMetaTags
 
-	
 	core.AppConfig.DefaultCDNs = config.CDN.UseCDN
 	core.AppConfig.TailwindCDN = config.CDN.Tailwind
 	core.AppConfig.JQueryCDN = config.CDN.JQuery
@@ -109,8 +99,15 @@ func applyConfigToApp(config *Configuration) {
 	core.AppConfig.PetiteVueCDN = config.CDN.PetiteVue
 }
 
+func ensureDirectoryExists(path string, name string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		log.Printf("Creating %s directory: %s", name, path)
+		return os.MkdirAll(path, 0755)
+	}
+	return nil
+}
+
 func main() {
-	
 	configPath := flag.String("config", "config.json", "Path to config file")
 	port := flag.String("port", "", "Port to run the server on (overrides config)")
 	devMode := flag.Bool("dev", false, "Enable development mode (overrides config)")
@@ -118,7 +115,6 @@ func main() {
 
 	flag.Parse()
 
-	
 	config, err := loadConfig(*configPath)
 	if err != nil {
 		log.Printf("Warning: Could not load config file: %v", err)
@@ -128,7 +124,6 @@ func main() {
 		applyConfigToApp(config)
 	}
 
-	
 	if *port != "" {
 		core.AppConfig.Port = *port
 		log.Printf("Overriding port with command line value: %s", *port)
@@ -145,47 +140,59 @@ func main() {
 		core.AppConfig.IsBuiltSystem = *isBuiltSystem
 		log.Printf("Overriding built system mode with command line value: %v", *isBuiltSystem)
 
-		
 		if *isBuiltSystem {
 			log.Println("Running in production mode on built system")
 			core.AppConfig.LiveReload = false
 		}
 	}
 
-	
-	if _, err := os.Stat(core.AppConfig.AppDir); os.IsNotExist(err) {
-		log.Printf("Creating app directory: %s", core.AppConfig.AppDir)
-		if err := os.MkdirAll(core.AppConfig.AppDir, 0755); err != nil {
-			log.Fatalf("Failed to create app directory: %v", err)
+	var wg sync.WaitGroup
+	var dirErrors []error
+
+	dirPaths := []struct {
+		path string
+		name string
+	}{
+		{core.AppConfig.AppDir, "app"},
+		{core.AppConfig.StaticDir, "static"},
+		{filepath.Join(core.AppConfig.AppDir, "components"), "components"},
+	}
+
+	dirErrorChan := make(chan error, len(dirPaths))
+
+	for _, dir := range dirPaths {
+		wg.Add(1)
+		go func(path, name string) {
+			defer wg.Done()
+			if err := ensureDirectoryExists(path, name); err != nil {
+				dirErrorChan <- fmt.Errorf("failed to create %s directory: %v", name, err)
+			}
+		}(dir.path, dir.name)
+	}
+
+	wg.Wait()
+	close(dirErrorChan)
+
+	for err := range dirErrorChan {
+		if err != nil {
+			dirErrors = append(dirErrors, err)
 		}
 	}
 
-	
-	if _, err := os.Stat(core.AppConfig.StaticDir); os.IsNotExist(err) {
-		log.Printf("Creating static directory: %s", core.AppConfig.StaticDir)
-		if err := os.MkdirAll(core.AppConfig.StaticDir, 0755); err != nil {
-			log.Fatalf("Failed to create static directory: %v", err)
+	if len(dirErrors) > 0 {
+		for _, err := range dirErrors {
+			log.Printf("Error: %v", err)
 		}
-	}
-
-	
-	componentDirPath := filepath.Join(core.AppConfig.AppDir, "components")
-	if _, err := os.Stat(componentDirPath); os.IsNotExist(err) {
-		log.Printf("Creating components directory: %s", componentDirPath)
-		if err := os.MkdirAll(componentDirPath, 0755); err != nil {
-			log.Fatalf("Failed to create components directory: %v", err)
-		}
+		log.Fatalf("Failed to create one or more required directories")
 	}
 
 	app := core.NewApp()
 
-	err = app.Init()
-	if err != nil {
+	if err = app.Init(); err != nil {
 		log.Fatalf("Failed to initialize Go on Airplanes: %v", err)
 	}
 
-	err = app.Start()
-	if err != nil {
+	if err = app.Start(); err != nil {
 		log.Fatalf("Go on Airplanes server error: %v", err)
 	}
 }
