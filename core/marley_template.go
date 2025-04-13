@@ -374,6 +374,12 @@ func injectJavaScriptLibraries(html, jsLibrary string) string {
 		} else {
 			scriptTag = fmt.Sprintf("<script src=\"%s\"></script>", cdnURL)
 		}
+	} else if jsLibrary == "pvue" {
+		if inMemory {
+			scriptTag = fmt.Sprintf("<script defer>%s</script>", scriptContent)
+		} else {
+			scriptTag = fmt.Sprintf("<script defer src=\"%s\"></script>", cdnURL)
+		}
 	}
 
 	if AppConfig.DevMode {

@@ -10,6 +10,7 @@ type Config struct {
 	TailwindCDN    string
 	JQueryCDN      string
 	AlpineJSCDN    string
+	PetiteVueCDN   string
 	LayoutPath     string
 	ComponentDir   string
 	AppName        string
@@ -42,10 +43,11 @@ var AppConfig = Config{
 	TailwindCDN:    "https://cdn.tailwindcss.com",
 	JQueryCDN:      "https://code.jquery.com/jquery-3.7.1.min.js",
 	AlpineJSCDN:    "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js",
+	PetiteVueCDN:   "https://unpkg.com/petite-vue@0.2.2/dist/petite-vue.iife.js",
 	LayoutPath:     "app/layout.html",
 	ComponentDir:   "app/components",
 	AppName:        "Go on Airplanes",
-	Version:        "0.5.1",
+	Version:        "0.5.2",
 	LogLevel:       "info",
 	TemplateCache:  true,
 	EnableCORS:     false,

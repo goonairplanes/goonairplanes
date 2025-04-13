@@ -144,6 +144,7 @@ func FetchAndCacheJSLibraries() error {
 		libraries := map[string]string{
 			"jquery": AppConfig.JQueryCDN,
 			"alpine": AppConfig.AlpineJSCDN,
+			"pvue":   AppConfig.PetiteVueCDN,
 		}
 
 		errCh := make(chan error, len(libraries))
@@ -201,6 +202,8 @@ func GetJSLibraryContent(library string) (string, bool, string) {
 			return "", false, AppConfig.AlpineJSCDN
 		case "jquery":
 			return "", false, AppConfig.JQueryCDN
+		case "pvue":
+			return "", false, AppConfig.PetiteVueCDN
 		default:
 			return "", false, ""
 		}
@@ -219,6 +222,8 @@ func GetJSLibraryContent(library string) (string, bool, string) {
 		return "", false, AppConfig.AlpineJSCDN
 	case "jquery":
 		return "", false, AppConfig.JQueryCDN
+	case "pvue":
+		return "", false, AppConfig.PetiteVueCDN
 	default:
 		return "", false, ""
 	}

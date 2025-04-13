@@ -191,20 +191,19 @@ func extractPageMetadataInternal(content, _ string) *PageMetadata {
 		}
 	}
 
-	
 	if match := htmlCommentJSLibraryRegex.FindStringSubmatch(content); len(match) > 1 {
 		jsLibrary := strings.TrimSpace(match[1])
 		jsLibrary = strings.ToLower(jsLibrary)
-		
+
 		switch jsLibrary {
-		case "alpine", "jquery", "vanilla":
+		case "alpine", "jquery", "vanilla", "pvue":
 			metadata.JSLibrary = jsLibrary
 		}
 	} else if match := jsLibraryRegex.FindStringSubmatch(content); len(match) > 1 {
 		jsLibrary := strings.ToLower(strings.TrimSpace(match[1]))
-		
+
 		switch jsLibrary {
-		case "alpine", "jquery", "vanilla":
+		case "alpine", "jquery", "vanilla", "pvue":
 			metadata.JSLibrary = jsLibrary
 		}
 	}
@@ -324,7 +323,6 @@ func (m *Marley) mergeMetadata(routePath string, pageMetadata *PageMetadata) *Pa
 		result.RenderMode = pageMetadata.RenderMode
 	}
 
-	
 	if pageMetadata.JSLibrary != defaultJSLibrary {
 		result.JSLibrary = pageMetadata.JSLibrary
 	}

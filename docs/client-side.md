@@ -8,6 +8,7 @@ GOA now includes a built-in system that lets you choose between different JavaSc
 
 - **Alpine.js** (default): A minimal framework for composing JavaScript behavior in your markup
 - **jQuery**: A feature-rich JavaScript library for DOM manipulation and AJAX
+- **Petite-Vue**: A minimal subset of Vue optimized for progressive enhancement
 - **Vanilla JS**: No library, just plain JavaScript
 
 ### How to Select a Library
@@ -21,6 +22,9 @@ Add a special comment at the top of your template file:
 <!-- For jQuery -->
 <!--js: jquery -->
 
+<!-- For Petite-Vue -->
+<!--js: pvue -->
+
 <!-- For Vanilla JS (no library) -->
 <!--js: vanilla -->
 ```
@@ -30,6 +34,7 @@ You can also use HTML-style comments with three dashes:
 ```html
 <!---js: alpine --->
 <!---js: jquery --->
+<!---js: pvue --->
 <!---js: vanilla --->
 ```
 
@@ -93,6 +98,38 @@ $(document).ready(function() {
 - [jQuery Documentation](https://api.jquery.com/)
 - [jQuery Learning Center](https://learn.jquery.com/)
 
+### Petite-Vue
+
+[Petite-Vue](https://github.com/vuejs/petite-vue) is a minimal subset of Vue optimized for progressive enhancement, making it perfect for adding interactive widgets to existing HTML.
+
+#### Basic Usage
+
+```html
+<!--js: pvue -->
+
+<div v-scope="{ count: 0 }">
+  <p>Current count: <span v-text="count"></span></p>
+  <button @click="count++">Increment</button>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    PetiteVue.createApp().mount()
+  })
+</script>
+```
+
+#### Key Features
+- Ultra lightweight (< 6kb)
+- Same reactive model as Vue
+- Template syntax compatible with Vue
+- Perfect for progressive enhancement
+- No build step required
+
+#### Learn More
+- [Petite-Vue Documentation](https://github.com/vuejs/petite-vue)
+- [Petite-Vue Examples](https://github.com/vuejs/petite-vue/tree/main/examples)
+
 ### Common Patterns
 
 #### DOM Manipulation with jQuery
@@ -116,6 +153,17 @@ $('#update-button').click(function() {
     
     <button @click="message = 'New content'">Update</button>
     <div x-text="message"></div>
+</div>
+```
+
+#### DOM Manipulation with Petite-Vue
+```html
+<div v-scope="{ visible: true, message: 'Original content' }">
+    <button @click="visible = !visible">Toggle</button>
+    <div v-show="visible">Content</div>
+    
+    <button @click="message = 'New content'">Update</button>
+    <div v-text="message"></div>
 </div>
 ```
 
@@ -167,6 +215,36 @@ $('#my-form').submit(function(e) {
 </form>
 ```
 
+#### Form Handling with Petite-Vue
+```html
+<form v-scope="{
+    formData: {}, 
+    message: '',
+    error: '',
+    submitForm(event) {
+        event.preventDefault();
+        fetch('/api/submit', {
+            method: 'POST',
+            body: new FormData(event.target),
+        })
+        .then(res => res.json())
+        .then(data => {
+            this.message = data.message;
+            this.error = '';
+        })
+        .catch(err => {
+            this.error = 'An error occurred';
+            this.message = '';
+        });
+    }
+}" @submit="submitForm">
+    <!-- Form inputs -->
+    <div v-text="message"></div>
+    <div v-text="error"></div>
+    <button type="submit">Submit</button>
+</form>
+```
+
 ## Template Integration
 
 ### Passing Data to JavaScript
@@ -190,11 +268,19 @@ const userData = JSON.parse($('#app').data('user'));
 </div>
 ```
 
+#### With Petite-Vue
+```html
+<div v-scope="{ user: JSON.parse($el.dataset.user) }">
+    <span v-text="user.name"></span>
+</div>
+```
+
 ## Best Practices
 
 1. **Choose the Right Tool**
    - Alpine.js: For components with state and reactivity
    - jQuery: For complex DOM manipulation and AJAX
+   - Petite-Vue: For Vue syntax with minimal footprint
    - Vanilla JS: For simple functionality or performance-critical code
 
 2. **Organization**

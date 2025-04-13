@@ -200,6 +200,9 @@ Choose your preferred JavaScript library for each page with a simple comment:
 <!-- For jQuery -->
 <!--js: jquery -->
 
+<!-- For Petite-Vue -->
+<!--js: pvue -->
+
 <!-- For no library -->
 <!--js: vanilla -->
 ```
@@ -240,6 +243,26 @@ For complex DOM manipulation and AJAX:
   });
 </script>
 {{end}}
+```
+
+### Using Petite-Vue
+
+For Vue-like reactivity with minimal footprint:
+
+```html
+<!--js: pvue -->
+
+<div v-scope="{ count: 0, message: 'Hello petite-vue!' }">
+  <h2 v-text="message"></h2>
+  <p>Current count: <span v-text="count"></span></p>
+  <button @click="count++">Increment</button>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    PetiteVue.createApp().mount()
+  })
+</script>
 ```
 
 ## Asset Bundling
