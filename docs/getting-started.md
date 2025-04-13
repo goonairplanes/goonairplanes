@@ -17,9 +17,22 @@ This guide will help you get up and running with Go on Airplanes quickly.
    - Git
 
 2. **Install the Framework**
+   
+   Use the official GOA CLI tool:
+   
+   Linux/macOS:
    ```bash
-   git clone https://github.com/yourusername/goonairplanes.git
-   cd goonairplanes
+   curl -sSL https://raw.githubusercontent.com/kleeedolinux/goa-cli/master/scripts/install.sh | bash
+   ```
+   
+   Windows (PowerShell):
+   ```powershell
+   iwr -useb https://raw.githubusercontent.com/kleeedolinux/goa-cli/master/scripts/install.ps1 | iex
+   ```
+   
+   Then create a new project:
+   ```bash
+   goa project new
    ```
 
 3. **Verify Installation**
