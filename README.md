@@ -50,7 +50,7 @@ curl -sSL https://raw.githubusercontent.com/kleeedolinux/goa-cli/master/scripts/
 iwr -useb https://raw.githubusercontent.com/kleeedolinux/goa-cli/master/scripts/install.ps1 | iex
 ```
 
-#### Install (Deprecated)
+#### Install Wizard (Deprecated)
 
 ```bash
 curl -fsSL https://pastebin.com/raw/5aF76YBs | bash
