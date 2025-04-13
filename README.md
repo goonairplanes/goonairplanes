@@ -1,7 +1,7 @@
 # ✈️ Go on Airplanes: Web Development That Doesn't Feel Like Rocket Science
 
 <div align="center">
-  <img src="img/goonairplane2.png" alt="Go on Airplanes Logo" width="180" />
+  <img src="img/goonairplanes-banner.png" alt="Go on Airplanes Logo" width="180" />
   <br><br>
   <p>
     <em>Built with Go • MIT License • Currently in Alpha</em>
