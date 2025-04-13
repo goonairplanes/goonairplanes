@@ -29,6 +29,9 @@ func (m *Marley) LoadTemplates() error {
 	var wg sync.WaitGroup
 	errorCh := make(chan error, 2)
 
+	templateErrors := make(map[string]error)
+	var templateErrorsMutex sync.Mutex
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -123,10 +126,10 @@ func (m *Marley) LoadTemplates() error {
 		path     string
 		tmpl     *template.Template
 		metadata *PageMetadata
+		err      error
 	}, len(templatePaths))
 
 	semaphore := make(chan struct{}, 4)
-	errCh := make(chan error, len(templatePaths))
 
 	var collectorWg sync.WaitGroup
 	collectorWg.Add(1)
@@ -135,8 +138,22 @@ func (m *Marley) LoadTemplates() error {
 		defer collectorWg.Done()
 		for i := 0; i < len(templatePaths); i++ {
 			result := <-templateCh
+
+			if result.err != nil {
+				templateErrorsMutex.Lock()
+				templateErrors[result.path] = result.err
+				templateErrorsMutex.Unlock()
+
+				RegisterPageError(result.path, result.err, http.StatusInternalServerError)
+
+				m.Logger.ErrorLog.Printf("Failed to load template %s: %v", result.path, result.err)
+				continue
+			}
+
 			templates[result.path] = result.tmpl
 			pageMetadata[result.path] = result.metadata
+
+			ClearPageError(result.path)
 
 			if AppConfig.SSGEnabled && result.metadata.RenderMode == "ssg" {
 				if err := m.generateStaticFile(result.path, result.tmpl, result.metadata); err != nil {
@@ -158,9 +175,26 @@ func (m *Marley) LoadTemplates() error {
 
 			routePath := getRoutePathFromFile(p, AppConfig.AppDir)
 
+			defer func() {
+				if r := recover(); r != nil {
+					err := fmt.Errorf("panic during template processing: %v", r)
+					templateCh <- struct {
+						path     string
+						tmpl     *template.Template
+						metadata *PageMetadata
+						err      error
+					}{routePath, nil, nil, err}
+				}
+			}()
+
 			pageContent, err := os.ReadFile(p)
 			if err != nil {
-				errCh <- fmt.Errorf("failed to read template %s: %w", p, err)
+				templateCh <- struct {
+					path     string
+					tmpl     *template.Template
+					metadata *PageMetadata
+					err      error
+				}{routePath, nil, nil, fmt.Errorf("failed to read template %s: %w", p, err)}
 				return
 			}
 
@@ -172,21 +206,36 @@ func (m *Marley) LoadTemplates() error {
 
 			_, err = tmpl.Parse(string(layoutContent))
 			if err != nil {
-				errCh <- fmt.Errorf("failed to parse layout template: %w", err)
+				templateCh <- struct {
+					path     string
+					tmpl     *template.Template
+					metadata *PageMetadata
+					err      error
+				}{routePath, nil, nil, fmt.Errorf("failed to parse layout template: %w", err)}
 				return
 			}
 
 			for name, content := range m.ComponentsCache {
 				_, err = tmpl.New(name).Parse(content)
 				if err != nil {
-					errCh <- fmt.Errorf("failed to parse component %s: %w", name, err)
+					templateCh <- struct {
+						path     string
+						tmpl     *template.Template
+						metadata *PageMetadata
+						err      error
+					}{routePath, nil, nil, fmt.Errorf("failed to parse component %s for template %s: %w", name, p, err)}
 					return
 				}
 			}
 
 			_, err = tmpl.New("page").Parse(processedContent)
 			if err != nil {
-				errCh <- fmt.Errorf("failed to parse template %s: %w", p, err)
+				templateCh <- struct {
+					path     string
+					tmpl     *template.Template
+					metadata *PageMetadata
+					err      error
+				}{routePath, nil, nil, fmt.Errorf("failed to parse template %s: %w", p, err)}
 				return
 			}
 
@@ -194,23 +243,24 @@ func (m *Marley) LoadTemplates() error {
 				path     string
 				tmpl     *template.Template
 				metadata *PageMetadata
-			}{routePath, tmpl, metadata}
+				err      error
+			}{routePath, tmpl, metadata, nil}
 
 			m.Logger.InfoLog.Printf("Template loaded: %s → %s (mode: %s)", p, routePath, metadata.RenderMode)
 		}(path)
 	}
 
 	wg.Wait()
-	close(errCh)
-
 	close(templateCh)
 
 	collectorWg.Wait()
 
-	for err := range errCh {
-		if err != nil {
-			m.Logger.ErrorLog.Printf("Template processing error: %v", err)
-			return err
+	m.TemplateErrors = templateErrors
+
+	if len(templateErrors) > 0 {
+		m.Logger.WarnLog.Printf("%d templates failed to load", len(templateErrors))
+		for path, err := range templateErrors {
+			m.Logger.WarnLog.Printf("  - %s: %v", path, err)
 		}
 	}
 
@@ -222,7 +272,8 @@ func (m *Marley) LoadTemplates() error {
 	}
 
 	elapsedTime := time.Since(startTime)
-	m.Logger.InfoLog.Printf("Templates loaded successfully in %v", elapsedTime.Round(time.Millisecond))
+	m.Logger.InfoLog.Printf("Templates loaded successfully in %v (%d templates, %d failed)",
+		elapsedTime.Round(time.Millisecond), len(templates), len(templateErrors))
 
 	return nil
 }
@@ -262,10 +313,23 @@ func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interf
 	m.mutex.RLock()
 	tmpl, ok := m.Templates[route]
 	metadata, metaOk := m.PageMetadata[route]
+
+	templateErr, hasError := m.TemplateErrors[route]
 	m.mutex.RUnlock()
 
+	if hasError {
+		m.Logger.ErrorLog.Printf("Attempted to render template with known errors: %s: %v", route, templateErr)
+
+		if !HasPageError(route) {
+			RegisterPageError(route, templateErr, http.StatusInternalServerError)
+		}
+		return fmt.Errorf("template has loading errors: %w", templateErr)
+	}
+
 	if !ok {
-		return fmt.Errorf("template not found: %s", route)
+		err := fmt.Errorf("template not found: %s", route)
+		RegisterPageError(route, err, http.StatusNotFound)
+		return err
 	}
 
 	if !metaOk {
@@ -320,8 +384,29 @@ func (m *Marley) RenderTemplate(w http.ResponseWriter, route string, data interf
 		templateData["Bundles"] = m.BundledAssets
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			m.Logger.ErrorLog.Printf("Panic during template execution: %v", r)
+			err := fmt.Errorf("template execution panic: %v", r)
+
+			m.mutex.Lock()
+			m.TemplateErrors[route] = err
+			m.mutex.Unlock()
+
+			RegisterPageError(route, err, http.StatusInternalServerError)
+		}
+	}()
+
 	err := tmpl.ExecuteTemplate(&buffer, "layout", templateData)
 	if err != nil {
+		m.Logger.ErrorLog.Printf("Error executing template %s: %v", route, err)
+
+		m.mutex.Lock()
+		m.TemplateErrors[route] = err
+		m.mutex.Unlock()
+
+		RegisterPageError(route, err, http.StatusInternalServerError)
+
 		return fmt.Errorf("error rendering template: %w", err)
 	}
 

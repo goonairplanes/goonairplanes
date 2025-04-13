@@ -117,6 +117,8 @@ func (app *GonAirApp) Start() error {
 
 	app.printBanner(port)
 
+	app.printErrorSummary()
+
 	http.DefaultTransport = &http.Transport{
 		MaxIdleConns:        1024,
 		MaxIdleConnsPerHost: 100,
@@ -156,6 +158,95 @@ func (app *GonAirApp) Start() error {
 	}
 
 	return nil
+}
+
+func (app *GonAirApp) printErrorSummary() {
+
+	var templateErrorCount int
+	var templateErrors []string
+
+	app.Router.Marley.mutex.RLock()
+	for routePath, err := range app.Router.Marley.TemplateErrors {
+		templateErrorCount++
+		templateErrors = append(templateErrors, fmt.Sprintf("  • %s: %v", routePath, err))
+	}
+	app.Router.Marley.mutex.RUnlock()
+
+	var pageErrorCount int
+	var pageErrors []string
+
+	pageErrorMap.Range(func(key, value interface{}) bool {
+		routePath := key.(string)
+		pageError := value.(*PageError)
+
+		app.Router.Marley.mutex.RLock()
+		_, alreadyReported := app.Router.Marley.TemplateErrors[routePath]
+		app.Router.Marley.mutex.RUnlock()
+
+		if !alreadyReported {
+			pageErrorCount++
+			errorDetails := pageError.Details
+			if len(errorDetails) > 100 {
+				errorDetails = errorDetails[:100] + "..."
+			}
+			pageErrors = append(pageErrors, fmt.Sprintf("  • %s: %s", routePath, errorDetails))
+		}
+		return true
+	})
+
+	var apiErrorCount int
+	var apiErrors []string
+
+	apiErrorMap.Range(func(key, value interface{}) bool {
+		apiError := value.(*APIError)
+
+		apiErrorCount++
+		errorMsg := apiError.ErrorMsg
+		if len(errorMsg) > 100 {
+			errorMsg = errorMsg[:100] + "..."
+		}
+		apiErrors = append(apiErrors, fmt.Sprintf("  • %s %s: %s",
+			apiError.Method, apiError.Path, errorMsg))
+		return true
+	})
+
+	if templateErrorCount > 0 || pageErrorCount > 0 || apiErrorCount > 0 {
+		fmt.Println()
+		app.Logger.WarnLog.Printf("┌─────────────────────────────────────────────────┐")
+		app.Logger.WarnLog.Printf("│               ERROR SUMMARY REPORT              │")
+		app.Logger.WarnLog.Printf("└─────────────────────────────────────────────────┘")
+
+		if templateErrorCount > 0 {
+			app.Logger.WarnLog.Printf("Template Loading Errors: %d", templateErrorCount)
+			for _, errMsg := range templateErrors {
+				app.Logger.WarnLog.Printf("%s", errMsg)
+			}
+			fmt.Println()
+		}
+
+		if pageErrorCount > 0 {
+			app.Logger.WarnLog.Printf("Page Rendering Errors: %d", pageErrorCount)
+			for _, errMsg := range pageErrors {
+				app.Logger.WarnLog.Printf("%s", errMsg)
+			}
+			fmt.Println()
+		}
+
+		if apiErrorCount > 0 {
+			app.Logger.WarnLog.Printf("API Endpoint Errors: %d", apiErrorCount)
+			for _, errMsg := range apiErrors {
+				app.Logger.WarnLog.Printf("%s", errMsg)
+			}
+			fmt.Println()
+		}
+
+		app.Logger.WarnLog.Printf("Page routes with errors will display the error page when accessed.")
+		app.Logger.WarnLog.Printf("API endpoints with errors will return error responses.")
+		app.Logger.WarnLog.Printf("Fix the issues and restart the server to resolve them.")
+		fmt.Println()
+	} else if app.Config.LogLevel == "debug" {
+		app.Logger.InfoLog.Printf("No template, page or API errors detected. All routes healthy!")
+	}
 }
 
 func (app *GonAirApp) printBanner(port string) {

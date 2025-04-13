@@ -47,7 +47,7 @@ var AppConfig = Config{
 	LayoutPath:     "app/layout.html",
 	ComponentDir:   "app/components",
 	AppName:        "Go on Airplanes",
-	Version:        "0.5.3",
+	Version:        "0.5.4",
 	LogLevel:       "info",
 	TemplateCache:  true,
 	EnableCORS:     false,

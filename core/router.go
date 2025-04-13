@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -138,10 +139,12 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			apiRegistryMutex.RLock()
 			var matchedHandler func(*APIContext)
 			var matchedParams map[string]string
+			var matchedPath string
 
 			for registeredPath, methodMap := range apiRegistry {
 				params, ok := matchPath(registeredPath, requestPath)
 				if ok {
+					matchedPath = registeredPath
 					if handler, methodExists := methodMap[req.Method]; methodExists {
 						matchedHandler = handler
 						matchedParams = params
@@ -153,14 +156,38 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 			apiRegistryMutex.RUnlock()
 
+			if HasAPIError(matchedPath, req.Method) {
+				apiErr := GetAPIError(matchedPath, req.Method)
+				r.Logger.WarnLog.Printf("API endpoint has known error: %s %s: %s",
+					req.Method, matchedPath, apiErr.ErrorMsg)
+
+				RenderError(w, apiErr.ErrorMsg, apiErr.Code)
+				return
+			}
+
 			if matchedHandler != nil {
+
 				ctx := &APIContext{
 					Request: req,
 					Writer:  w,
 					Params:  matchedParams,
 					Config:  &AppConfig,
 				}
-				matchedHandler(ctx)
+
+				func() {
+					defer func() {
+						if rec := recover(); rec != nil {
+							errMsg := fmt.Sprintf("API handler panic: %v", rec)
+							r.Logger.ErrorLog.Printf("%s %s - %s", req.Method, matchedPath, errMsg)
+
+							RegisterAPIError(matchedPath, req.Method, fmt.Errorf("%v", rec), http.StatusInternalServerError)
+
+							RenderError(w, "Internal Server Error", http.StatusInternalServerError)
+						}
+					}()
+
+					matchedHandler(ctx)
+				}()
 				return
 			}
 
@@ -359,21 +386,48 @@ func (r *Router) createTemplateHandler(routePath string) http.HandlerFunc {
 			},
 		}
 
+		if HasPageError(routePath) {
+			r.Logger.WarnLog.Printf("Rendering error page for route with known errors: %s", routePath)
+			r.RenderErrorPage(w, req, routePath)
+			return
+		}
+
+		r.Marley.mutex.RLock()
+		_, hasErrors := r.Marley.TemplateErrors[routePath]
+		r.Marley.mutex.RUnlock()
+
+		if hasErrors {
+			r.Logger.WarnLog.Printf("Skipping render of template with known errors: %s", routePath)
+			r.RenderErrorPage(w, req, routePath)
+			return
+		}
+
 		err := r.Marley.RenderTemplate(w, routePath, data)
 		if err != nil {
 			r.Logger.ErrorLog.Printf("Template rendering error for request %s (template %s): %v", requestPath, routePath, err)
-			if strings.Contains(err.Error(), "template not defined") {
-				r.serveErrorPage(w, req, http.StatusNotFound)
-			} else {
-				r.serveErrorPage(w, req, http.StatusInternalServerError)
+			statusCode := http.StatusInternalServerError
+
+			if strings.Contains(err.Error(), "template not found") {
+				statusCode = http.StatusNotFound
 			}
+
+			RegisterPageError(routePath, err, statusCode)
+
+			r.RenderErrorPage(w, req, routePath)
 			return
 		}
 	}
 }
 
-func (r *Router) serveErrorPage(w http.ResponseWriter, req *http.Request, status int) {
+func (r *Router) serveErrorPage(w http.ResponseWriter, req *http.Request, status int, customMessage ...string) {
 	var errorPage string
+	var errorMessage string
+
+	if len(customMessage) > 0 {
+		errorMessage = customMessage[0]
+	} else {
+		errorMessage = http.StatusText(status)
+	}
 
 	switch status {
 	case http.StatusNotFound:
@@ -388,16 +442,23 @@ func (r *Router) serveErrorPage(w http.ResponseWriter, req *http.Request, status
 	}
 
 	errorTemplatePath := "/" + errorPage
-	if tmpl, exists := r.Marley.Templates[errorTemplatePath]; exists {
+
+	r.Marley.mutex.RLock()
+	_, hasErrors := r.Marley.TemplateErrors[errorTemplatePath]
+	r.Marley.mutex.RUnlock()
+
+	if tmpl, exists := r.Marley.Templates[errorTemplatePath]; exists && !hasErrors {
 		w.WriteHeader(status)
 		err := tmpl.ExecuteTemplate(w, "layout", map[string]interface{}{
 			"Params": map[string]string{
-				"status": fmt.Sprintf("%d", status),
-				"path":   req.URL.Path,
-				"error":  http.StatusText(status),
+				"status":  fmt.Sprintf("%d", status),
+				"path":    req.URL.Path,
+				"error":   errorMessage,
+				"message": errorMessage,
 			},
-			"Config": &AppConfig,
-			"Route":  errorTemplatePath,
+			"Config":  &AppConfig,
+			"Route":   errorTemplatePath,
+			"Message": errorMessage,
 		})
 		if err == nil {
 			return
@@ -405,7 +466,36 @@ func (r *Router) serveErrorPage(w http.ResponseWriter, req *http.Request, status
 		r.Logger.ErrorLog.Printf("Failed to execute error template %s: %v", errorTemplatePath, err)
 	}
 
-	http.Error(w, fmt.Sprintf("%d %s", status, http.StatusText(status)), status)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+
+	errorHTML := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Error %d</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+               margin: 0; padding: 2rem; line-height: 1.5; color: #333; max-width: 800px; margin: 0 auto; }
+        h1 { font-size: 2rem; margin-bottom: 1rem; }
+        .error-box { background-color: #f8f9fa; border-radius: 6px; padding: 2rem; 
+                    box-shadow: 0 2px 15px rgba(0,0,0,0.05); margin: 2rem 0; border-left: 5px solid #dc3545; }
+        pre { background: #f1f1f1; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.9rem; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .back-link { margin-top: 2rem; display: inline-block; }
+    </style>
+</head>
+<body>
+    <h1>Error %d</h1>
+    <div class="error-box">
+        <p><strong>%s</strong></p>
+        <p>Path: %s</p>
+    </div>
+    <a href="/" class="back-link">← Return to homepage</a>
+</body>
+</html>`, status, status, errorMessage, req.URL.Path)
+
+	io.WriteString(w, errorHTML)
 }
 
 func normalizePath(path string) string {

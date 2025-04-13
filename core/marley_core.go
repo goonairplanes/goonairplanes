@@ -13,6 +13,7 @@ type Marley struct {
 	ComponentsCache map[string]string
 	PageMetadata    map[string]*PageMetadata
 	LayoutMetadata  *PageMetadata
+	TemplateErrors  map[string]error
 	mutex           sync.RWMutex
 	cacheExpiry     time.Time
 	cacheTTL        time.Duration
@@ -31,6 +32,7 @@ func NewMarley(logger *AppLogger) *Marley {
 	m := &Marley{
 		Templates:       make(map[string]*template.Template),
 		PageMetadata:    make(map[string]*PageMetadata),
+		TemplateErrors:  make(map[string]error),
 		SSGCache:        make(map[string]SSGCacheEntry),
 		SSGCacheDir:     AppConfig.SSGDir,
 		ComponentsCache: make(map[string]string),

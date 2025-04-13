@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{if .Error}}Error: {{.Error.Title}}{{else}}Page Error{{end}}</title>
+    <style>
+        :root {
+            --error-color: #e53935;
+            --background-color: #f8f9fa;
+            --text-color: #333;
+            --border-color: #ddd;
+            --accent-color: #3498db;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--background-color);
+        }
+        
+        header {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .error-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 2rem;
+            margin-top: 2rem;
+            border-left: 5px solid var(--error-color);
+        }
+        
+        .error-title {
+            color: var(--error-color);
+            margin-top: 0;
+            font-weight: 600;
+        }
+        
+        .error-message {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .error-details {
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            padding: 1rem;
+            overflow-x: auto;
+            margin-bottom: 1.5rem;
+            color: #666;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .error-stack {
+            background-color: #272822;
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            white-space: pre-wrap;
+        }
+        
+        .error-meta {
+            font-size: 0.9rem;
+            color: #666;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .error-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        footer {
+            padding: 1rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+            background-color: white;
+            border-top: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Marley Framework</h1>
+    </header>
+    
+    <main>
+        <div class="error-container">
+            <h2 class="error-title">{{if .Error}}{{.Error.Title}}{{else}}Page Error{{end}}</h2>
+            <p class="error-message">
+                {{if .Error}}{{.Error.Message}}{{else}}
+                The page could not be loaded due to an error. This could be because of a syntax error in the template or because the requested route doesn't exist.
+                {{end}}
+            </p>
+            
+            {{if .Error}}
+            <div class="error-meta">
+                <div class="error-meta-item">
+                    <strong>Path:</strong> {{.Error.Path}}
+                </div>
+                <div class="error-meta-item">
+                    <strong>Time:</strong> {{.Error.Time}}
+                </div>
+                <div class="error-meta-item">
+                    <strong>Code:</strong> {{.Error.Code}}
+                </div>
+            </div>
+            
+            {{if .Error.Details}}
+            <h3>Error Details</h3>
+            <div class="error-details">
+                {{.Error.Details}}
+            </div>
+            {{end}}
+            
+            {{if .Error.Stack}}
+            <h3>Stack Trace</h3>
+            <div class="error-stack">{{.Error.Stack}}</div>
+            {{end}}
+            {{end}}
+            
+            <div class="actions">
+                <a href="/" class="btn btn-primary">Go to Homepage</a>
+                {{if .Config.DevMode}}
+                <button onclick="location.reload()" class="btn btn-secondary">Reload Page</button>
+                {{end}}
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>Marley Framework • {{.Config.Version}}</p>
+    </footer>
+</body>
+</html> 
