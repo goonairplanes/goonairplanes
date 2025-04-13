@@ -1,6 +1,6 @@
-<!---title: jQuery Example--->
-<!---description: Demonstrating reactivity with jQuery--->
-<!---js: jquery--->
+
+
+
 
 {{define "content"}}
 <div class="jquery-demo">
@@ -39,7 +39,7 @@
     let count = 0;
     let boxVisible = false;
     
-    // Button click handlers
+    
     $("#increment").click(function() {
       count++;
       $("#counter").text(count);
@@ -58,12 +58,12 @@
       animateCounter();
     });
     
-    // Input change handler
+    
     $("#message").on("input", function() {
       $("#message-display").text($(this).val());
     });
 
-    // Animation toggle
+    
     $("#toggle-animation").click(function() {
       if (boxVisible) {
         $("#animated-box").animate({
@@ -79,7 +79,7 @@
       boxVisible = !boxVisible;
     });
 
-    // Counter animation
+    
     function animateCounter() {
       $("#counter")
         .addClass("highlighted")

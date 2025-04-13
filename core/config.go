@@ -47,7 +47,7 @@ var AppConfig = Config{
 	LayoutPath:     "app/layout.html",
 	ComponentDir:   "app/components",
 	AppName:        "Go on Airplanes",
-	Version:        "0.5.2",
+	Version:        "0.5.3",
 	LogLevel:       "info",
 	TemplateCache:  true,
 	EnableCORS:     false,
@@ -59,7 +59,7 @@ var AppConfig = Config{
 	JSLibraryCache: make(map[string]string),
 
 	DefaultRenderMode: "ssr",
-	SSGDir:            "static/generated",
+	SSGDir:            ".goa/cache",
 	SSGEnabled:        true,
 	SSGCacheEnabled:   true,
 
