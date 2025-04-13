@@ -1,7 +1,7 @@
 # ✈️ Go on Airplanes: Web Development That Doesn't Feel Like Rocket Science
 
 <div align="center">
-  <img src="img/goonairplanes-banner.png" alt="Go on Airplanes Logo" width="180" />
+  <img src="img/goonairplanes-banner.png" alt="Go on Airplanes Logo" width="512" />
   <br><br>
   <p>
     <em>Built with Go • MIT License • Currently in Alpha</em>
@@ -50,6 +50,11 @@ curl -sSL https://raw.githubusercontent.com/kleeedolinux/goa-cli/master/scripts/
 iwr -useb https://raw.githubusercontent.com/kleeedolinux/goa-cli/master/scripts/install.ps1 | iex
 ```
 
+Once installed, create a new project:
+```bash
+goa project new
+```
+
 #### Install Wizard (Deprecated)
 
 ```bash
@@ -58,11 +63,6 @@ curl -fsSL https://pastebin.com/raw/5aF76YBs | bash
 
 ```powershell
 irm https://pastebin.com/raw/dyzxs2cc | iex
-```
-
-Once installed, create a new project:
-```bash
-goa project new
 ```
 
 ### Option 2: Manual Setup
