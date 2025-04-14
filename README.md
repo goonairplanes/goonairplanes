@@ -8,7 +8,7 @@
   </p>
 </div>
 
-> ⚠️ **Heads-Up: Vibes!** Go on Airplanes is in its early days, so expect a few bumps as we soar to new heights. Bugs? Missing features? We’re all ears—jump in, report issues, or send us a PR to make GoA even better!
+> ⚠️ **Heads-Up: Alpha Vibes!** Go on Airplanes is in its early days, so expect a few bumps as we soar to new heights. Bugs? Missing features? We’re all ears—jump in, report issues, or send us a PR to make GoA even better!
 
 Hey there, coder! Sick of frameworks that feel like solving a Rubik’s Cube in a storm? Say hello to **Go on Airplanes (GoA)**—a Golang framework that’s here to make web dev fun, simple, and lightweight. Think of it as your trusty co-pilot for building modern web apps without the baggage of complexity. 🛫
 
