@@ -1,4 +1,4 @@
-# ✈️ Go on Airplanes: Web Development That Doesn't Feel Like Rocket Science
+# ✈️ Go on Airplanes: Web Dev That Feels Like a Smooth Flight
 
 <div align="center">
   <img src="img/goonairplanes-banner.png" alt="Go on Airplanes Logo" width="512" />
@@ -8,37 +8,31 @@
   </p>
 </div>
 
-> ⚠️ **ALPHA RELEASE WARNING**: Go on Airplanes is currently in alpha stage with active development. You may encounter bugs and incomplete features. We'd love your contributions to enhance GOA's core functionality - please report issues or submit PRs to help us improve!
+> ⚠️ **Heads-Up: Alpha Vibes!** Go on Airplanes is in its early days, so expect a few bumps as we soar to new heights. Bugs? Missing features? We’re all ears—jump in, report issues, or send us a PR to make GoA even better!
 
-## Documentation
+Hey there, coder! Sick of frameworks that feel like solving a Rubik’s Cube in a storm? Say hello to **Go on Airplanes (GoA)**—a Golang framework that’s here to make web dev fun, simple, and lightweight. Think of it as your trusty co-pilot for building modern web apps without the baggage of complexity. 🛫
 
-* [Manifest](https://github.com/kleeedolinux/goonairplanes/blob/main/MANIFEST.md) - Why this project exists
-* [Roadmap](https://github.com/kleeedolinux/goonairplanes/blob/main/ROADMAP.md) - Future development plans
-* [Security Policy](https://github.com/kleeedolinux/goonairplanes/blob/main/SECURITY.md) - Reporting vulnerabilities
-* [Code of Conduct](https://github.com/kleeedolinux/goonairplanes/blob/main/CODE_OF_CONDUCT.md) - Community guidelines
-* [Contributing](https://github.com/kleeedolinux/goonairplanes/blob/main/CONTRIBUTING.md) - How to contribute
-* [Benchmark](https://github.com/kleeedolinux/goonairplanes/blob/main/BENCHMARK.md) - GOA vs NextJS
+I built GoA after too many nights battling over-engineered tools for straightforward projects. If you’ve ever muttered, “Why is this so hard?” while wrestling with a basic app, this one’s for you. It’s designed to give you a **better developer experience (DX)**—less setup, more coding, and a vibe that just feels... right.
 
-Hey fellow developers! Tired of wrestling with complex frameworks just to build simple web apps? Meet **Go on Airplanes** – your new co-pilot for building web applications that's so simple, you'll feel like you're coding with wings. 🛫
+## Why GoA Feels Like Flying First Class
 
-I created this framework after one too many late nights wrestling with Next.js for basic CRUD apps. If you've ever thought "There's got to be an easier way," buckle up – this might be your new favorite toolkit.
+GoA is a breath of fresh air for Golang devs who want a modern web framework without the weight. Here’s what makes it special:
 
-## Why You'll Love This
+- **Zero Setup Stress** – Drop files, code, done. No hours lost to config hell.
+- **Files Become Routes** – Pop an HTML file in a folder, and boom—it’s a page.
+- **Live Reload Magic** – See changes instantly, no restarting required.
+- **Real-World Ready** – Auth, logging, and security are baked in, so you’re covered.
+- **No Bloat** – Keeps things lean, no dependency overload.
+- **Frontend Your Way** – Pick Alpine.js, jQuery, vanilla JS, or whatever—just add a comment.
+- **Performance? Oh, It’s Good** – The performance is more good than Next.js, but we’re here for the joy of building, not just speed.
 
-- **No Configuration Headaches** – Start coding in seconds, not hours
-- **Files = Routes** – Just drop HTML files in folders and watch the magic
-- **Live Updates** – See changes instantly without restarting
-- **Ready for Real Work** – Built-in auth, logging, and security tools
-- **Zero Bloat** – No dependency nightmares here
-- **Frontend Freedom** – Choose your JavaScript library (Alpine.js, jQuery, or vanilla) with a simple comment
+> “It’s like someone made web dev fun again.” – You, probably, after giving it a spin.
 
-> "It's like someone took the best parts of modern frameworks and made them actually enjoyable to use." – Probably you, after trying it
+## Take Off in 60 Seconds
 
-## Get Flying in 60 Seconds
+### Option 1: GoA CLI (The Easy Way)
 
-### Option 1: Use GOA CLI (Recommended)
-
-SETUP WIZARD DEPRECATED - Use the official GOA CLI tool from [GOA-Cli](https://github.com/kleeedolinux/goa-cli/tree/master) as the recommended method since you can do everything from creating new projects to managing configs and routes with the CLI.
+The [GoA CLI](https://github.com/kleeedolinux/goa-cli/tree/master) is your ticket to a smooth ride—create projects, manage routes, and tweak configs with a few commands.
 
 #### Linux/macOS:
 ```bash
@@ -50,69 +44,61 @@ curl -sSL https://raw.githubusercontent.com/kleeedolinux/goa-cli/master/scripts/
 iwr -useb https://raw.githubusercontent.com/kleeedolinux/goa-cli/master/scripts/install.ps1 | iex
 ```
 
-Once installed, create a new project:
+Then, whip up a new project:
 ```bash
 goa project new
 ```
 
-#### Install Wizard (Deprecated)
+### Option 2: Manual Setup (DIY Vibes)
 
-```bash
-curl -fsSL https://pastebin.com/raw/5aF76YBs | bash
-```
-
-```powershell
-irm https://pastebin.com/raw/dyzxs2cc | iex
-```
-
-### Option 2: Manual Setup
-
-1. **Grab the code**  
+1. **Grab the Code**  
    `git clone https://github.com/kleeedolinux/goonairplanes.git && cd goonairplanes`
 
-2. **Start the engine**  
+2. **Fire It Up**  
    `go run main.go`
 
-3. **Open your browser**  
-   Visit `http://localhost:3000`
+3. **Check It Out**  
+   Open `http://localhost:3000` in your browser.
 
-## 📂 Project Structure
+## 📂 How Your Project Looks
+
+Here’s the lay of the land—simple and intuitive:
 
 ```
 project/
-├── main.go                # Application entry point
-├── core/                  # Framework internals
-│   ├── app.go             # Application setup and lifecycle
-│   ├── config.go          # Configuration
-│   ├── marley.go          # Template rendering engine
-│   ├── router.go          # Request handling and routing
-│   └── watcher.go         # File watching for hot reload
-├── app/                   # Your application
-│   ├── layout.html        # Base layout template
+├── main.go                # Where the magic starts
+├── core/                  # The engine room
+│   ├── app.go             # App setup and flow
+│   ├── config.go          # Your settings
+│   ├── marley.go          # Template renderer (named after my dog!)
+│   ├── router.go          # Handles requests
+│   └── watcher.go         # Watches files for instant updates
+├── app/                   # Your playground
+│   ├── layout.html        # The main template
 │   ├── index.html         # Homepage ("/")
 │   ├── about.html         # About page ("/about")
-│   ├── dashboard/         # Dashboard section
-│   │   └── index.html     # Dashboard homepage ("/dashboard")
-│   ├── user/[id]/         # Dynamic route with parameters
-│   │   └── index.html     # User profile page ("/user/123")
-│   ├── components/        # Reusable UI components
-│   │   ├── navbar.html    # Navigation component
+│   ├── dashboard/         # Dashboard area
+│   │   └── index.html     # Dashboard home ("/dashboard")
+│   ├── user/[id]/         # Dynamic routes
+│   │   └── index.html     # User page ("/user/123")
+│   ├── components/        # Reusable bits
+│   │   ├── navbar.html    # Nav bar component
 │   │   └── card.html      # Card component
 │   └── api/               # API endpoints
 │       └── users/         # Users API
-│           └── route.go   # Handler for "/api/users"
-├── static/                # Static assets
-│   ├── css/               # Stylesheets
-│   ├── js/                # JavaScript files
-│   └── images/            # Image assets
-└── go.mod                 # Go module definition
+│           └── route.go   # API logic for "/api/users"
+├── static/                # Static goodies
+│   ├── css/               # Styles
+│   ├── js/                # Scripts
+│   └── images/            # Pictures
+└── go.mod                 # Go module stuff
 ```
 
-## 📑 Page Creation
+## 📑 Making Pages
 
 ### Basic Pages
 
-Create HTML files in the `app` directory to define routes:
+Drop HTML files in `app` to create routes. It’s that easy:
 
 - `app/about.html` → `/about`
 - `app/contact.html` → `/contact`
@@ -121,19 +107,20 @@ Create HTML files in the `app` directory to define routes:
 
 ### Dynamic Routes
 
-Create folders with names in square brackets for dynamic segments:
+Want flexible URLs? Use square brackets for params:
 
 - `app/product/[id]/index.html` → `/product/123`, `/product/abc`
 - `app/blog/[category]/[slug].html` → `/blog/tech/go-web-dev`
 
-Access parameters in templates:
+Use params in templates like this:
 ```html
 <h1>Product: {{.Params.id}}</h1>
 ```
 
 ### Nested Routes
 
-Organize routes in subfolders for better structure:
+Keep things tidy with folders:
+
 ```
 app/
 ├── dashboard/
@@ -144,89 +131,78 @@ app/
 
 ## 🧩 Components & Templates
 
-### Creating Components
+### Build Components
 
-Define reusable components in the `app/components` directory:
+Make reusable UI bits in `app/components`:
 
 ```html
 <!-- app/components/warning.html -->
 <div class="alert">
-  🚨 {{.}} <!-- This dot is your message -->
+  🚨 {{.}} <!-- Your message goes here -->
 </div>
 ```
 
 Use them anywhere:
 
 ```html
-{{template "warning" "Coffee level low!"}}
+{{template "warning" "Running low on snacks!"}}
 ```
 
-### Your Universal Layout
+### Your Main Layout
 
-`app/layout.html` is your application's trusty flight plan:
+`app/layout.html` is the foundation for every page:
 
 ```html
 <!DOCTYPE html>
 <html>
 <head>
   <title>{{.AppName}}</title>
-  <!-- We include Tailwind by default (you can remove it) -->
+  <!-- Tailwind’s included, but you can ditch it -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
   <main class="container">
-    {{template "content" .}} <!-- Your page content lands here -->
+    {{template "content" .}} <!-- Pages plug in here -->
   </main>
 </body>
 </html>
 ```
 
-## 🖥️ Rendering Modes
+## 🖥️ Rendering Options
 
-Go on Airplanes provides two approaches to rendering your pages:
+GoA gives you two ways to serve pages, depending on your vibe.
 
 ### Default: Server-Side Rendering
 
-By default, all pages are rendered on the server for each request:
-- **Always up-to-date content** generated at request time
-- **SEO-friendly** with full HTML for search engines
-- **No configuration needed** - just create your templates
-
-This is the standard behavior - you don't need to do anything special to use it.
+Pages render on the fly for each request:
+- **Fresh Content** – Always up to date.
+- **SEO-Friendly** – Search engines love it.
+- **No Setup** – It just works.
 
 ### Optional: Static Site Generation (SSG)
 
-For pages that don't change often, use SSG to pre-render and cache them in memory:
-- **Lightning-fast page loads** with pre-generated content
-- **Reduced server load** with no processing per request
-- **Perfect for static content** like documentation or landing pages
-
-To use SSG, just add this comment to your HTML:
+For pages that don’t change much, pre-render them:
+- **Super Fast** – Cached and ready to go.
+- **Less Server Work** – Perfect for static stuff like landing pages.
+- **Easy Peasy** – Add this comment:
 ```html
 <!--render:ssg-->
 ```
 
-## 🌟 JavaScript Library Integration
+## 🌟 JavaScript Your Way
 
-Choose your preferred JavaScript library for each page with a simple comment:
+Pick your JS flavor per page with a comment:
 
 ```html
-<!-- For Alpine.js (default) -->
-<!--js: alpine -->
-
-<!-- For jQuery -->
-<!--js: jquery -->
-
-<!-- For Petite-Vue -->
-<!--js: pvue -->
-
-<!-- For no library -->
-<!--js: vanilla -->
+<!--js: alpine -->  <!-- Default, lightweight -->
+<!--js: jquery -->  <!-- Classic DOM power -->
+<!--js: pvue -->    <!-- Vue-like reactivity -->
+<!--js: vanilla --> <!-- Pure JS, no extras -->
 ```
 
-### Using Alpine.js (Default)
+### Alpine.js (Default)
 
-Alpine.js provides reactive, declarative interactions with minimal code:
+Reactive and simple:
 
 ```html
 <!--js: alpine -->
@@ -234,14 +210,14 @@ Alpine.js provides reactive, declarative interactions with minimal code:
 <div x-data="{ open: false }">
   <button @click="open = !open">Toggle Menu</button>
   <nav x-show="open" class="menu">
-    <!-- Navigation items -->
+    <!-- Menu items -->
   </nav>
 </div>
 ```
 
-### Using jQuery
+### jQuery
 
-For complex DOM manipulation and AJAX:
+For DOM-heavy or AJAX stuff:
 
 ```html
 <!--js: jquery -->
@@ -262,17 +238,17 @@ For complex DOM manipulation and AJAX:
 {{end}}
 ```
 
-### Using Petite-Vue
+### Petite-Vue
 
-For Vue-like reactivity with minimal footprint:
+Lightweight Vue-like goodness:
 
 ```html
 <!--js: pvue -->
 
-<div v-scope="{ count: 0, message: 'Hello petite-vue!' }">
+<div v-scope="{ count: 0, message: 'Hey there!' }">
   <h2 v-text="message"></h2>
-  <p>Current count: <span v-text="count"></span></p>
-  <button @click="count++">Increment</button>
+  <p>Count: <span v-text="count"></span></p>
+  <button @click="count++">Add One</button>
 </div>
 
 <script>
@@ -284,37 +260,38 @@ For Vue-like reactivity with minimal footprint:
 
 ## Asset Bundling
 
-Go on Airplanes includes production-ready asset bundling for optimized performance:
+GoA makes your assets production-ready:
 
-- **Automatic CSS/JS combining** – All static assets bundled into single files
-- **Zero configuration needed** – Works out of the box in production mode
-- **Easy template integration** – Simple variables for bundle paths
+- **Bundles CSS/JS** – Combines files for speed.
+- **No Config Needed** – Works in production mode.
+- **Easy to Use** – Plug into templates.
 
-Enable bundling in your code:
+Turn it on:
 ```go
 app.Marley.BundleMode = true
 ```
 
-Use bundled assets in your layout:
+Add to your layout:
 ```html
 <link rel="stylesheet" href="{{index .Bundles "css"}}">
 <script src="{{index .Bundles "js"}}"></script>
 ```
 
-### Enhanced Metadata
+### SEO Metadata
 
-Both rendering modes support metadata for SEO:
+Boost your pages with meta tags:
+
 ```html
-<!--title:Page Title-->
-<!--description:Page description-->
-<!--meta:keywords:keyword1,keyword2-->
+<!--title:Awesome Page-->
+<!--description:Cool stuff here-->
+<!--meta:keywords:web,dev,fun-->
 ```
 
-## When You Need More Power
+## Need More Juice?
 
-### API Endpoints Made Simple
+### APIs Made Easy
 
-Create `route.go` files to handle data:
+Create `route.go` files for data endpoints:
 
 ```go
 // app/api/hello/route.go
@@ -323,49 +300,48 @@ package main
 import "net/http"
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-  w.Write([]byte("Hello from the friendly skies!"))
+  w.Write([]byte("Yo, welcome aboard!"))
 }
 ```
 
-Visit `/api/hello` to see it in action!
+Hit `/api/hello` to see it work.
 
-### Customize Your Flight Controls
+### Tweak Your Setup
 
-Tweak `core/config.go` to set:
+Edit `core/config.go` to customize:
+- Port
+- Dev vs. prod mode
+- Logging
+- CDN options
+- And more
 
-- Port number
-- Development vs production mode
-- What gets logged
-- CDN preferences
-- ...and more
+## Pilot’s Tips
 
-## Pilot's Checklist
+✔️ **Keep Components Tiny** – Small and reusable is the way.  
+✔️ **Use `static/`** – For CSS, JS, and images.  
+✔️ **Try Middleware** – Auth, rate limiting, and security are built in.  
+✔️ **Custom Errors** – Make `404.html` and `500.html` for polish.  
 
-✔️ **Keep components small** – Like good snacks, they're better when bite-sized  
-✔️ **Use the static folder** – Perfect for images, CSS, and client-side JS  
-✔️ **Try the middleware** – Authentication, rate limiting, and security included  
-✔️ **Make error pages** – `404.html` and `500.html` get special treatment  
+## Join the Flight Crew
 
-## Join the Crew
+We’re in alpha, so your ideas and fixes are gold! Want to help?
 
-Found a bug? Have an awesome idea? We're still in alpha and would love your help!
+1. Fork the repo.
+2. Branch out: `git checkout -b my-cool-idea`
+3. Commit your stuff.
+4. Push it up.
+5. Open a PR.
 
-1. Fork the repo
-2. Create your feature branch (`git checkout -b cool-new-feature`)
-3. Commit your changes
-4. Push to the branch
-5. Open a pull request
+Check out the full scoop at [Go on Airplanes](https://kleeedolinux.gitbook.io/goonairplanes), our [Roadmap](https://kleeedolinux.gitbook.io/goonairplanes/others/roadmap), or [Benchmarks](https://kleeedolinux.gitbook.io/goonairplanes/others/benchmark).
 
 ## License
 
-MIT Licensed – Fly wherever you want with this code ✈️
+MIT—take this code and fly anywhere you want! ✈️
 
-> Fun fact: The GOA template renderer is named Marley — after the developer's dog. <br>
-> Just like Marley, it's loyal, fast, and makes everything feel like home. <br>
-> 🐶🚀🏠
+> Fun fact: The template renderer’s called Marley, after my dog. It’s fast, loyal, and makes coding feel like coming home. 🐶🚀
 
 ---
 
 <div align="center">
-  <p>Built with ❤️ by the Jklee</p>
-</div> 
+  <p>Built with ❤️ by Jklee</p>
+</div>
