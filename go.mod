@@ -1,10 +1,10 @@
 module goonairplanes
 
-go 1.24.2
+go 1.20
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/kleeedolinux/socket.go v0.2.0
+	github.com/kleeedolinux/socket.go v0.2.3
 )
 
 require (
