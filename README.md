@@ -332,7 +332,7 @@ We’re in alpha, so your ideas and fixes are gold! Want to help?
 4. Push it up.
 5. Open a PR.
 
-Check out the full scoop at [Go on Airplanes](https://kleeedolinux.gitbook.io/goonairplanes), our [Roadmap](https://kleeedolinux.gitbook.io/goonairplanes/others/roadmap), or [Benchmarks](https://kleeedolinux.gitbook.io/goonairplanes/others/benchmark).
+Check out the full scoop at [Go on Airplanes](https://goonairplanes.gitbook.io/goa), our [Roadmap](https://goonairplanes.gitbook.io/goa/others/roadmap), or [Benchmarks](https://goonairplanes.gitbook.io/goa/others/benchmark).
 
 ## License
 
