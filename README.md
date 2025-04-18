@@ -58,7 +58,7 @@ goa project new
    `go run main.go`
 
 3. **Check It Out**  
-   Open `http://localhost:3000` in your browser.
+   Open `http://localhost:5000` in your browser.
 
 ## 📂 How Your Project Looks
 
